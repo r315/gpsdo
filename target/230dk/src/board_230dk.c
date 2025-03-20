@@ -75,6 +75,7 @@ typedef struct {
 static void (*tim2_cb)(uint32_t);
 static volatile uint32_t ticms;
 static serialbus_t uartbus_a, uartbus_b;
+static i2cbus_t i2cbus;
 
 static void serial_a_init(void) { UART_Init(&uartbus_a); }
 uint32_t serial_a_available(void) { return UART_Available(&uartbus_a); }
@@ -92,11 +93,6 @@ uint32_t serial_b_available(void) { return UART_Available(&uartbus_b); }
 uint32_t serial_b_read(uint8_t *buf, uint32_t len) { return UART_Read(&uartbus_b, buf, len); }
 uint32_t serial_b_write(const uint8_t *buf, uint32_t len) { return UART_Write(&uartbus_b, buf, len); }
 
-void SysTick_Handler(void){
-    ticms++;
-    //LED1_TOGGLE;
-}
-
 void delay_ms(uint32_t ms){
     volatile uint32_t end = ticms + ms;
     while (ticms < end){ }
@@ -112,13 +108,13 @@ inline uint32_t GetTick(void)
     return ticms;
 }
 
+void SysTick_Handler(void){
+    ticms++;
+    //LED1_TOGGLE;
+}
+
 void board_init(void)
 {
-    i2cbus_t i2cbus = {
-        .speed = 100000,
-        .bus_num = I2C_BUS1
-    };
-
     LED1_PIN_INIT;
 
     system_clock_config();
@@ -137,7 +133,9 @@ void board_init(void)
     uartbus_b.speed = 9600;
 
     UART_Init(&uartbus_b);
-    gpio_mode_set(GPIOA, GPIO_MODE_INPUT, GPIO_PUPD_NONE, GPIO_PIN_2);
+
+    i2cbus.speed = 100000;
+    i2cbus.bus_num = I2C_BUS3;
 
     I2C_Init(&i2cbus);
 
@@ -183,6 +181,11 @@ void system_clock_config(void)
 
     gpio_mode_set(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO_PIN_8);
     gpio_af_set(GPIOA, GPIO_AF_0, GPIO_PIN_2);
+}
+
+i2cbus_t *board_i2c_get(void)
+{
+    return &i2cbus;
 }
 
 void board_config_output(uint32_t frequency)

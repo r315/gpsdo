@@ -8,6 +8,7 @@ extern "C" {
 
 #include <stddef.h>
 #include <stdint.h>
+#include "i2c.h"
 #include "gd32e23x_gpio.h"
 
 #define LED1_PIN_INIT  \
@@ -46,6 +47,9 @@ void board_frequency_measurement_cb(void(*cb)(uint32_t));
 
 void DAC_Init(void);
 void DAC_DutySet(uint16_t duty);
+
+i2cbus_t *board_i2c_get(void);
+
 #ifdef __cplusplus
 }
 #endif

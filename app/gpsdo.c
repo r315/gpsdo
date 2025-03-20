@@ -18,10 +18,6 @@
     }
     putchar('\n');
 } */
-static i2cbus_t i2c = {
-        .speed = 100000,
-        .bus_num = I2C_BUS1
-};
 
 static uint32_t last_time_stamp;
 static uint32_t time_diff;
@@ -38,15 +34,17 @@ static int i2cCmd(int argc, char **argv)
 {
     int32_t val;
     uint8_t i2c_buf[256], count;
+    i2cbus_t *i2c = board_i2c_get();
 
 
-    if( !strcmp("help", argv[1])){
+    if(!strcmp("help", argv[1]) || argc == 1){
         printf("Usage: i2c <operation>\n");
-        printf("\t init <bus>, Initialize i2c bus (0-3)\n");
-        printf("\t scan, scan i2c bus\n");
-        printf("\t slave <addr>, set slave address (0-7F)\n\n");
-        printf("\t rr <addr> [count], Read register, address (0-ff), count (0-255)\n");
-        printf("\t wr <addr>, <data>, Write register, address (0-ff), data (multiple)\n");
+        printf("\tinit <bus>,       Initialize i2c bus (0-3)\n");
+        printf("\tscan,             scan i2c bus\n");
+        printf("\tslave <addr>,     set slave address (0-7F) for read/write registers\n");
+        printf("\trd [count], Read current location, count (0-255)\n");
+        printf("\trr <reg> [count], Read register, reg (0-ff), count (0-255)\n");
+        printf("\twr <reg> <data>,  Write register, reg (0-ff), data (multiple)\n");
         return CLI_OK;
     }
 
@@ -60,41 +58,59 @@ static int i2cCmd(int argc, char **argv)
 		    return CLI_BAD_PARAM;
 	    }
 
-        i2c.bus_num = val;
-        I2C_Init(&i2c);
+        i2c->bus_num = val;
+        I2C_Init(i2c);
 
         return CLI_OK;
     }
 
     if(!strcmp("slave", argv[1])){
         if(CLI_Ha2i(argv[2], (uint32_t*)&val)){
-            i2c.addr = val;
+            i2c->addr = val;
             return CLI_OK;
         }
     }
 
+    uint8_t read = 0;
+
+    if(!strcmp("rd", argv[1])){
+        read = 1;
+    }
+
     if( !strcmp("rr", argv[1])){
-        if(CLI_Ha2i(argv[2], (uint32_t*)&val)){
-            uint8_t reg = val;
-            count = CLI_Ia2i(argv[3], &val) ? val : 1;
-            I2C_Write(&i2c, (uint8_t*)&reg, 1);
-            if(I2C_Read(&i2c, i2c_buf, count) > 0){
-                for(uint8_t i = 0; i < count; i ++){
-                    if( (i & 15) == 0) {
-                        if(i == (count - 1)){
-                            putchar('\n');
-                        }else{
-                            printf("\n%02X: ", i & 0xF0);
-                        }
-                    }
-                    printf("%02X ", i2c_buf[i]);
-                }
-                return CLI_OK_LF;
+        read = 2;
+    }
+
+    if(read){
+        if (read == 2){
+            if(CLI_Ha2i(argv[2], (uint32_t*)&val)){
+                I2C_Write(i2c, i2c->addr, (uint8_t*)&val, 1);
+                val = 3; // next parameter
             }else{
-                printf("I2C Error\n");
+                return CLI_BAD_PARAM;
             }
-            return CLI_OK;
+        }else{
+            val = 2; // next parameter
         }
+
+        count = CLI_Ia2i(argv[val], &val) ? val : 1;
+
+        if(I2C_Read(i2c, i2c->addr, i2c_buf, count) > 0){
+            for(uint8_t i = 0; i < count; i ++){
+                if( (i & 15) == 0) {
+                    if(i == (count - 1)){
+                        putchar('\n');
+                    }else{
+                        printf("\n%02X: ", i & 0xF0);
+                    }
+                }
+                printf("%02X ", i2c_buf[i]);
+            }
+            return CLI_OK_LF;
+        }else{
+            printf("I2C Error\n");
+        }
+        return CLI_OK;
     }
 
     if(!strcmp("wr", argv[1])){
@@ -102,7 +118,7 @@ static int i2cCmd(int argc, char **argv)
             i2c_buf[0] = val;
             if(CLI_Ha2i(argv[3], (uint32_t*)&val)){
                 i2c_buf[1] = val;
-                I2C_Write(&i2c, i2c_buf, 2);
+                I2C_Write(i2c, i2c->addr, i2c_buf, 2);
             }
         }
         return CLI_OK;
@@ -119,9 +135,7 @@ static int i2cCmd(int argc, char **argv)
             if( (i & 15) == 0)
                 printf("\n%02X ", i & 0xF0);
 
-            I2C_SetSlave(&i2c, i);
-
-            if(I2C_Read(&i2c, &count, 1) == 0){
+            if(I2C_Read(i2c, i, &count, 1) == 0){
                 printf("-- ");
             }else{
                 printf("%02X ", i);
