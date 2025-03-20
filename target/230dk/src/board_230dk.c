@@ -67,7 +67,9 @@ typedef struct {
 
 #define RCU_CMSIS       ((Rcu_Type *)RCU_BASE)
 #define TMR2            ((Timer_Type*)TIMER2)
+#define TMR13           ((Timer_Type*)TIMER13)
 #define TMR14           ((Timer_Type*)TIMER14)
+#define TMR16           ((Timer_Type*)TIMER16)
 
 
 static void (*tim2_cb)(uint32_t);
@@ -125,6 +127,9 @@ void board_init(void)
 
 	SysTick_Config(SystemCoreClock / 1000);
 
+    rcu_periph_clock_enable(RCU_GPIOA);
+    rcu_periph_clock_enable(RCU_GPIOB);
+
     uartbus_a.bus = UART_BUS0;
     uartbus_a.speed = 115200;
 
@@ -137,8 +142,6 @@ void board_init(void)
     I2C_Init(&i2cbus);
 
     redirect_stdout(&stdout_ops_serial);
-
-    rcu_periph_clock_enable(RCU_GPIOB);
 }
 
 void SW_Reset(void)
@@ -341,4 +344,37 @@ void TIMER2_IRQHandler(void)
         tim2_cb(TMR14->CH0CV << 16 | TMR2->CH0CV);
     }
     TMR2->INTF = 0;
+}
+
+void DAC_Init(void)
+{
+    Timer_Type *tmr = TMR13;
+
+    rcu_periph_clock_enable(RCU_TIMER13);
+    rcu_periph_reset_enable(RCU_TIMER13RST);
+    rcu_periph_reset_disable(RCU_TIMER13RST);
+    // Configure PA7 for TIMER13_CH0
+    gpio_mode_set(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO_PIN_7);
+    gpio_af_set(GPIOA, GPIO_AF_4, GPIO_PIN_7);
+
+    tmr->PSC = 0;           // No prescaller
+    tmr->CAR = DAC_MAX_VAL;
+    tmr->CH0CV =  tmr->CAR >> 1; // 50%
+    tmr->CHCTL0 =
+        (6 << 4) |          // PWM0 mode
+        (0 << 0);           // CH0 output mode
+    tmr->CHCTL2 =
+        TIMER_CHCTL2_CH0EN; // Enable CH0
+    tmr->CTL0 = 1;          // Start Timer
+}
+
+void DAC_DutySet(uint16_t duty)
+{
+    Timer_Type *tmr = TMR13;
+
+    if(duty > DAC_MAX_VAL){
+        return;
+    }
+
+    tmr->CH0CV = duty;
 }

@@ -11,12 +11,13 @@ extern "C" {
 #include "gd32e23x_gpio.h"
 
 #define LED1_PIN_INIT  \
-        rcu_periph_clock_enable(RCU_GPIOA); \
         gpio_mode_set(GPIOA, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO_PIN_8);
 
 #define LED1_OFF    gpio_bit_write(GPIOA, GPIO_PIN_8, SET)
 #define LED1_ON     gpio_bit_write(GPIOA, GPIO_PIN_8, RESET)
 #define LED1_TOGGLE gpio_bit_toggle(GPIOA, GPIO_PIN_8)
+
+#define DAC_MAX_VAL      0x0FFF      // 12bit DAC
 
 
 void board_init(void);
@@ -28,7 +29,6 @@ void __debugbreak(void);
 
 void board_config_output(uint32_t frequency);
 int32_t board_trim_irc(int8_t adj);
-
 
 uint32_t serial_a_available(void);
 uint32_t serial_a_read(uint8_t *buf, uint32_t len);
@@ -44,6 +44,8 @@ void board_frequency_measurement_start(void);
 void board_frequency_measurement_stop(void);
 void board_frequency_measurement_cb(void(*cb)(uint32_t));
 
+void DAC_Init(void);
+void DAC_DutySet(uint16_t duty);
 #ifdef __cplusplus
 }
 #endif

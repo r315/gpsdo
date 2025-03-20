@@ -248,9 +248,19 @@ static int tsCmd(int argc, char **argv)
         return CLI_OK;
     }
 
-    printf("TS:      0x%08lx\n", last_time_stamp);
-    printf("TS diff: 0x%08lx\n", time_diff);
+static int dacCmd(int argc, char **argv)
+{
+    uint32_t val;
 
+    if(!strcmp("init", argv[1])){
+        DAC_Init();
+    }
+
+    if(!strcmp("duty", argv[1])){
+        if(CLI_Ha2i(argv[2], &val)){
+            DAC_DutySet(val);
+        }
+    }
     return CLI_OK;
 }
 
@@ -271,6 +281,7 @@ cli_command_t cli_cmds [] = {
     //{"gps", i2cCmd}, passtrough
     {"ts", tsCmd},
     {"nmea", nmeaCmd},
+    {"dac", dacCmd},
 };
 
 static uint8_t gps_line_get(void)
