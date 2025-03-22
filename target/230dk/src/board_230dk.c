@@ -338,7 +338,7 @@ void board_frequency_measurement_stop(void)
 
 void TIMER2_IRQHandler(void)
 {
-    pps_led_set(ON);
+    led_set(LED_PPS, ON);
     TMR5->CTL0 |= TIMER_CTL0_CEN;
 
     if(tim2_cb){
@@ -349,7 +349,7 @@ void TIMER2_IRQHandler(void)
 
 void TIMER5_IRQHandler(void)
 {
-    pps_led_set(OFF);
+    led_set(LED_PPS, OFF);
     TMR5->INTF = 0;
 }
 
@@ -424,14 +424,24 @@ uint8_t pps_init(void)
     return 1;
 }
 
-void pps_led_set(uint8_t state)
+void led_set(enum led_tag tag, uint8_t state)
 {
     static uint8_t color = 1;
 
-    if(state){
-        IOEXP_Clr(&i2cbus, color & 7);
-        color = (color == 7) ? 1 : color + 1;
-    }else
-        IOEXP_Set(&i2cbus, 7);
+    switch(tag){
+        case LED_PPS:
+            if(state){
+                IOEXP_Clr(&i2cbus, color & 7);
+                color = (color == 7) ? 1 : color + 1;
+            }else
+                IOEXP_Set(&i2cbus, 7);
+            break;
+
+        case LED_LOCK:
+        case LED_ALM:
+        default:
+            break;
+    }
+}
 }
 

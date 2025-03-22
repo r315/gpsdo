@@ -21,6 +21,12 @@ extern "C" {
 #define DAC_MAX_VAL     0x0FFF      // 12bit DAC
 #define LED_PPS_MASK    (3 << 1)
 
+enum led_tag{
+    LED_PPS = 0,
+    LED_LOCK,
+    LED_ALM
+};
+
 
 void board_init(void);
 void delay_ms(uint32_t ms);
@@ -53,7 +59,8 @@ uint32_t dac_voltage_get(void);
 i2cbus_t *board_i2c_get(void);
 
 uint8_t pps_init(void);
-void pps_led_set(uint8_t state);
+
+void led_set(enum led_tag, uint8_t state);
 #ifdef __cplusplus
 }
 #endif
