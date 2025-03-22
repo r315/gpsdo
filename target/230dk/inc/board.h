@@ -19,6 +19,7 @@ extern "C" {
 #define LED1_TOGGLE gpio_bit_toggle(GPIOA, GPIO_PIN_8)
 
 #define DAC_MAX_VAL     0x0FFF      // 12bit DAC
+#define LED_PPS_MASK    (3 << 1)
 
 
 void board_init(void);
@@ -52,6 +53,8 @@ uint32_t dac_voltage_get(void);
 
 i2cbus_t *board_i2c_get(void);
 
+uint8_t pps_init(void);
+void pps_led_set(uint8_t state);
 #ifdef __cplusplus
 }
 #endif

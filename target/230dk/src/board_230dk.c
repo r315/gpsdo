@@ -4,6 +4,12 @@
 #include "uart.h"
 #include "i2c.h"
 #include "system_gd32e23x.h"
+#include "io_expander.h"
+
+
+#define ON  1
+#define OFF 0
+#define RTC_BDCTL_RTCSRC_LXTAL    (1 << 8)
 
 typedef struct {
     union{
@@ -65,8 +71,22 @@ typedef struct {
     volatile uint32_t CFG;
 }Timer_Type;
 
+typedef struct {
+    volatile uint32_t CTL0;
+    volatile uint32_t CTL1;
+    volatile uint32_t rsvd_1;
+    volatile uint32_t DMAINTEN;
+    volatile uint32_t INTF;
+    volatile uint32_t SWEVG;
+    volatile uint32_t rsvd_2[3];
+    volatile uint32_t CNT;
+    volatile uint32_t PSC;
+    volatile uint32_t CAR;
+}TimerBasic_Type;
+
 #define RCU_CMSIS       ((Rcu_Type *)RCU_BASE)
 #define TMR2            ((Timer_Type*)TIMER2)
+#define TMR5            ((TimerBasic_Type*)TIMER5)
 #define TMR13           ((Timer_Type*)TIMER13)
 #define TMR14           ((Timer_Type*)TIMER14)
 #define TMR16           ((Timer_Type*)TIMER16)
@@ -127,6 +147,8 @@ void board_init(void)
 
     rcu_periph_clock_enable(RCU_GPIOA);
     rcu_periph_clock_enable(RCU_GPIOB);
+    rcu_periph_clock_enable(RCU_GPIOC);
+    rcu_periph_clock_enable(RCU_GPIOF);
 
     uartbus_a.bus = UART_BUS0;
     uartbus_a.speed = 115200;
@@ -295,25 +317,40 @@ void board_frequency_measurement_start(void(*cb)(uint32_t))
 
     NVIC_EnableIRQ(TIMER2_IRQn);
     tmr->CTL0 = 1;
+
+    // Configure elaborated PPS led
+    rcu_periph_clock_enable(RCU_TIMER5);
+
+    TMR5->CTL0 = TIMER_CTL0_SPM;
+    TMR5->PSC = (rcu_clock_freq_get(CK_APB1) / 10000UL) - 1;
+    TMR5->CAR = 1000;  // on for ~100ms
+    TMR5->DMAINTEN =
+        TIMER_DMAINTEN_UPIE; // Interrut on update event
+    NVIC_EnableIRQ(TIMER5_IRQn);
 }
 
 void board_frequency_measurement_stop(void)
 {
     rcu_periph_reset_enable(RCU_TIMER2RST);
     rcu_periph_reset_enable(RCU_TIMER14RST);
-}
-
-void board_frequency_measurement_cb(void(*cb)(uint32_t))
-{
-    tim2_cb = cb;
+    rcu_periph_reset_enable(RCU_TIMER5RST);
 }
 
 void TIMER2_IRQHandler(void)
 {
+    pps_led_set(ON);
+    TMR5->CTL0 |= TIMER_CTL0_CEN;
+
     if(tim2_cb){
         tim2_cb(TMR14->CH0CV << 16 | TMR2->CH0CV);
     }
     TMR2->INTF = 0;
+}
+
+void TIMER5_IRQHandler(void)
+{
+    pps_led_set(OFF);
+    TMR5->INTF = 0;
 }
 
 void dac_init(void)
@@ -359,3 +396,42 @@ uint32_t dac_voltage_get(void)
     //TODO read adc
     return 0;
 }
+
+uint8_t pps_init(void)
+{
+    uint8_t retry = 10;
+    rcu_periph_clock_enable(RCU_RTC);
+    rcu_periph_clock_enable(RCU_PMU);
+
+    // Reset to ensure that is stable
+    PMU_CTL |= PMU_CTL_BKPWEN;
+    RCU_BDCTL |= RCU_BDCTL_BKPRST;
+    RCU_BDCTL &= ~RCU_BDCTL_BKPRST;
+    // Enable Low speed xtal
+    RCU_BDCTL |= RCU_BDCTL_LXTALEN;
+
+    do{
+        delay_ms(50);
+        if(!(--retry)){
+            return 0;
+        }
+    }while(!(RCU_BDCTL & RCU_BDCTL_LXTALSTB));
+    // Enable RTC and use LXTAL
+    RCU_BDCTL |= RCU_BDCTL_RTCEN | RTC_BDCTL_RTCSRC_LXTAL;
+    // Enable 1Hz output on PC13
+    rtc_alter_output_config(RTC_CALIBRATION_1HZ, RTC_ALARM_OUTPUT_PP);
+
+    return 1;
+}
+
+void pps_led_set(uint8_t state)
+{
+    static uint8_t color = 1;
+
+    if(state){
+        IOEXP_Clr(&i2cbus, color & 7);
+        color = (color == 7) ? 1 : color + 1;
+    }else
+        IOEXP_Set(&i2cbus, 7);
+}
+

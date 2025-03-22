@@ -62,6 +62,7 @@ $(DRIVERS_PATH)/wdt/wdt_gd32e23x.c \
 
 COMPONENT_SOURCES = \
 $(COMPONENT_PATH)/si5351/si5351.c \
+$(COMPONENT_PATH)/io_expander/pcf8574.c \
 
 C_SOURCES = \
 $(DRIVER_SOURCES) \
