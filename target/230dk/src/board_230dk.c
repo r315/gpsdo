@@ -93,12 +93,14 @@ uint32_t serial_b_available(void) { return UART_Available(&uartbus_b); }
 uint32_t serial_b_read(uint8_t *buf, uint32_t len) { return UART_Read(&uartbus_b, buf, len); }
 uint32_t serial_b_write(const uint8_t *buf, uint32_t len) { return UART_Write(&uartbus_b, buf, len); }
 
-void delay_ms(uint32_t ms){
+void delay_ms(uint32_t ms)
+{
     volatile uint32_t end = ticms + ms;
     while (ticms < end){ }
 }
 
-uint32_t ElapsedTicks(uint32_t start_ticks){
+uint32_t ElapsedTicks(uint32_t start_ticks)
+{
 	int32_t delta = GetTick() - start_ticks;
     return (delta < 0) ? -delta : delta;
 }
@@ -108,9 +110,9 @@ inline uint32_t GetTick(void)
     return ticms;
 }
 
-void SysTick_Handler(void){
+void SysTick_Handler(void)
+{
     ticms++;
-    //LED1_TOGGLE;
 }
 
 void board_init(void)
@@ -147,8 +149,9 @@ void SW_Reset(void)
     NVIC_SystemReset();
 }
 
-void __debugbreak(void){
-	 asm volatile
+void __debugbreak(void)
+{
+    asm volatile
     (
         "bkpt #01 \n"
     );
@@ -156,7 +159,6 @@ void __debugbreak(void){
 
 void system_clock_config(void)
 {
-
     system_clock_72m_irc8m();
 
     uint32_t timeout = 0xFFFF;
@@ -186,42 +188,6 @@ void system_clock_config(void)
 i2cbus_t *board_i2c_get(void)
 {
     return &i2cbus;
-}
-
-void board_config_output(uint32_t frequency)
-{
-#if 0
-    rcu_periph_clock_enable(RCU_TIMER2);
-    uint32_t clock = rcu_clock_freq_get(CK_APB1);
-
-    timer_deinit(TIMER2);
-    timer_prescaler_config(TIMER2, (clock / 1000000UL) - 1, TIMER_PSC_RELOAD_UPDATE);
-    timer_autoreload_value_config(TIMER2, frequency - 1);
-
-    timer_channel_output_pulse_value_config(TIMER2, TIMER_CH_1, (frequency >> 1) - 1);
-    timer_channel_output_mode_config(TIMER2, TIMER_CH_1, TIMER_OC_MODE_PWM0);
-    timer_channel_output_state_config(TIMER2, TIMER_CH_1, TIMER_CCX_ENABLE);
-
-    gpio_mode_set(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO_PIN_7);
-    gpio_af_set(GPIOA, GPIO_AF_1, GPIO_PIN_7);
-    gpio_output_options_set(GPIOA, GPIO_OTYPE_PP, GPIO_OSPEED_10MHZ, GPIO_PIN_7);
-
-    timer_enable(TIMER2);
-
-    crm_periph_clock_enable(CRM_TMR5_PERIPH_CLOCK, TRUE);
-
-    TMR5->ctrl1 = 0;
-    TMR5->div = (clocks.apb1_freq / 500UL) - 1;
-    TMR5->pr = 1000UL -1;
-    TMR5->c1dt = 500 - 1;
-    TMR5->cctrl_bit.c1en = 1;
-    TMR5->cm1_output_bit.c1c = 0; // output
-    TMR5->cm1_output_bit.c1octrl = 6; // PWM
-
-    TMR5->ctrl1_bit.tmren = 1;
-
-    GPIOA->cfglr = (GPIOA->cfglr & ~(0x0F << 0)) | (0x0A << 0); // PA0
-#endif
 }
 
 int32_t board_trim_irc(int8_t adj)
@@ -269,9 +235,10 @@ exit:
     return irc8mcal << 8 | irc8madj;
 }
 
-void board_frequency_measurement_start(void)
+void board_frequency_measurement_start(void(*cb)(uint32_t))
 {
     Timer_Type *tmr;
+    tim2_cb = cb;
 
     rcu_periph_clock_enable(RCU_TIMER2);
     rcu_periph_clock_enable(RCU_TIMER14);
@@ -286,9 +253,9 @@ void board_frequency_measurement_start(void)
     // Configure PA6 for TIMER2_CH0
     gpio_mode_set(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO_PIN_6);
     gpio_af_set(GPIOA, GPIO_AF_1, GPIO_PIN_6);
-    // Configure PA2 for TIMER14_CH0
-    gpio_mode_set(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO_PIN_2);
-    gpio_af_set(GPIOA, GPIO_AF_0, GPIO_PIN_2);
+    // Configure PB14 for TIMER14_CH0
+    gpio_mode_set(GPIOB, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO_PIN_14);
+    gpio_af_set(GPIOB, GPIO_AF_1, GPIO_PIN_14);
 
     tmr = TMR14;
 
@@ -349,7 +316,7 @@ void TIMER2_IRQHandler(void)
     TMR2->INTF = 0;
 }
 
-void DAC_Init(void)
+void dac_init(void)
 {
     Timer_Type *tmr = TMR13;
 
@@ -371,7 +338,7 @@ void DAC_Init(void)
     tmr->CTL0 = 1;          // Start Timer
 }
 
-void DAC_DutySet(uint16_t duty)
+void dac_duty_set(uint16_t duty)
 {
     Timer_Type *tmr = TMR13;
 
@@ -380,4 +347,15 @@ void DAC_DutySet(uint16_t duty)
     }
 
     tmr->CH0CV = duty;
+}
+
+uint16_t dac_duty_get(void)
+{
+    return ((Timer_Type *)TMR13)->CH0CV;
+}
+
+uint32_t dac_voltage_get(void)
+{
+    //TODO read adc
+    return 0;
 }

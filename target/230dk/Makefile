@@ -39,7 +39,7 @@ $(LIB_PATH)/inc \
 $(MIDDLEWARE_PATH)/cli-simple \
 $(TARGET_PATH)/inc \
 $(APP_PATH) \
-$(COMPONENT_PATH)/ds1086 \
+$(COMPONENT_PATH)/si5351 \
 
 AS_INCLUDES =\
 
@@ -61,7 +61,7 @@ $(DRIVERS_PATH)/uart/uart_gd32e23x.c \
 $(DRIVERS_PATH)/wdt/wdt_gd32e23x.c \
 
 COMPONENT_SOURCES = \
-$(COMPONENT_PATH)/ds1086/ds1086.c \
+$(COMPONENT_PATH)/si5351/si5351.c \
 
 C_SOURCES = \
 $(DRIVER_SOURCES) \

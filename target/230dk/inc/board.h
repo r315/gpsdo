@@ -18,7 +18,7 @@ extern "C" {
 #define LED1_ON     gpio_bit_write(GPIOA, GPIO_PIN_8, RESET)
 #define LED1_TOGGLE gpio_bit_toggle(GPIOA, GPIO_PIN_8)
 
-#define DAC_MAX_VAL      0x0FFF      // 12bit DAC
+#define DAC_MAX_VAL     0x0FFF      // 12bit DAC
 
 
 void board_init(void);
@@ -41,12 +41,14 @@ uint32_t serial_b_write(const uint8_t *buf, uint32_t len);
 
 void serial_passtrough(void);
 
-void board_frequency_measurement_start(void);
+void board_frequency_measurement_start(void(*cb)(uint32_t));
 void board_frequency_measurement_stop(void);
 void board_frequency_measurement_cb(void(*cb)(uint32_t));
 
-void DAC_Init(void);
-void DAC_DutySet(uint16_t duty);
+void dac_init(void);
+void dac_duty_set(uint16_t duty);
+uint16_t dac_duty_get(void);
+uint32_t dac_voltage_get(void);
 
 i2cbus_t *board_i2c_get(void);
 
