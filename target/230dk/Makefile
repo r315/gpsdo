@@ -3,12 +3,13 @@
 ######################################
 TARGET =gpsdo
 
+RELEASE=no
 #######################################
 # Features
 #######################################
-
-FEATURE_TFT_DISPLAY =yes
-FEATURE_CLI			=yes
+FEATURES = \
+FEATURE_TFT_DISPLAY=0 \
+FEATURE_CLI=0 \
 
 #######################################
 # paths
@@ -82,11 +83,22 @@ LDSCRIPT :=$(TARGET_PATH)/GD32E230_FLASH.ld
 # Misc
 #######################################
 
-OCD_CONFIG =$(TARGET_PATH)/gigadevice.cfg
+ifeq ($(RELEASE),yes)
+OPT   =-O2
+DEBUG	 =DEBUG=0
+GIT_TAG :=$(shell git describe --abbrev=0 --tags 2>/dev/null || true)
+VERSION :=VERSION=\"$(GIT_TAG)\"
+else
+OPT   =-Og -g -gdwarf-2 -Wall#-Wextra
+DEBUG    =DEBUG=1
+endif
 
 # C defines
 C_DEFS +=\
 $(DEVICE) \
+$(FEATURES) \
+$(DEBUG) \
+$(VERSION) \
 
 #######################################
 # CFLAGS
@@ -106,12 +118,6 @@ FLOAT_ABI =#-u_printf_float
 
 # mcu
 MCU = $(CPU) $(FPU) $(FLOAT_ABI)
-
-ifdef RELEASE
-OPT   =-O2
-else
-OPT   =-Og -g -gdwarf-2 -Wall #-Wextra
-endif
 
 ifndef V
 VERBOSE =@

@@ -44,7 +44,6 @@ void serial_passtrough(void);
 
 void board_frequency_measurement_start(void(*cb)(uint32_t));
 void board_frequency_measurement_stop(void);
-void board_frequency_measurement_cb(void(*cb)(uint32_t));
 
 void dac_init(void);
 void dac_duty_set(uint16_t duty);

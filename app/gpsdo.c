@@ -2,11 +2,13 @@
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>
+#include "gpsdo.h"
 #include "cli_simple.h"
 #include "board.h"
 #include "i2c.h"
 #include "wdt.h"
 #include "si5351.h"
+#include "logger.h"
 
 
 static uint32_t last_time_stamp;
@@ -317,8 +319,6 @@ cli_command_t cli_cmds [] = {
     {"reset", resetCmd},
     {"clear", clearCmd},
     {"i2c", i2cCmd},
-    {"ds1086", ds1086Cmd},
-    //{"gps", i2cCmd}, passtrough
     {"ts", tsCmd},
     {"nmea", nmeaCmd},
     {"dac", dacCmd},
@@ -357,6 +357,12 @@ void gpsdo(void)
     CLI_Init("gpsdo >");
     CLI_RegisterCommand(cli_cmds, sizeof(cli_cmds) / sizeof(cli_command_t));
     CLI_Clear();
+
+    LOG_INF("gpsdo %s", VERSION);
+
+    if(!pps_init()){
+        DBG_WRN("Fail to start pps");
+    }
 
     gps_uart_wr_idx = 0;
     nmea_output = 0;

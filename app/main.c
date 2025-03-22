@@ -16,9 +16,6 @@ int main(void)
 
     dac_init();
 
-    if(!pps_init()){
-        DBG_WRN("Fail to start pps");
-    }
 
     gpsdo();
 
