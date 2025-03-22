@@ -14,9 +14,6 @@ int main(void)
 {
     board_init();
 
-    dac_init();
-
-
     gpsdo();
 
     while(1)

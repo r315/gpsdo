@@ -164,6 +164,9 @@ void board_init(void)
     I2C_Init(&i2cbus);
 
     redirect_stdout(&stdout_ops_serial);
+
+    dac_init();
+    adc_init();
 }
 
 void SW_Reset(void)
@@ -397,6 +400,32 @@ uint32_t dac_voltage_get(void)
     return 0;
 }
 
+void adc_init(void)
+{
+    rcu_periph_clock_enable(RCU_ADC);
+    rcu_adc_clock_config(RCU_ADCCK_APB2_DIV6);
+     /* ADC channel length config */
+    adc_channel_length_config(ADC_INSERTED_CHANNEL, 2);
+    /* ADC temperature sensor channel config */
+    adc_inserted_channel_config(0U, ADC_CHANNEL_16, ADC_SAMPLETIME_239POINT5);
+    /* ADC internal reference voltage channel config */
+    adc_inserted_channel_config(1U, ADC_CHANNEL_17, ADC_SAMPLETIME_239POINT5);
+    /* ADC trigger config */
+    adc_external_trigger_source_config(ADC_INSERTED_CHANNEL, ADC_EXTTRIG_INSERTED_NONE);
+    /* ADC data alignment config */
+    adc_data_alignment_config(ADC_DATAALIGN_RIGHT);
+    /* ADC SCAN function enable */
+    adc_special_function_config(ADC_SCAN_MODE, ENABLE);
+    /* ADC temperature and Vrefint enable */
+    adc_tempsensor_vrefint_enable();
+    adc_external_trigger_config(ADC_INSERTED_CHANNEL, ENABLE);
+    /* enable ADC interface */
+    adc_enable();
+    delay_ms(1U);
+    /* ADC calibration and reset calibration */
+    adc_calibration_enable();
+}
+
 uint8_t pps_init(void)
 {
     uint8_t retry = 10;
@@ -443,5 +472,15 @@ void led_set(enum led_tag tag, uint8_t state)
             break;
     }
 }
+
+uint32_t vref_get(void)
+{
+    /* ADC software trigger enable */
+    adc_software_trigger_enable(ADC_INSERTED_CHANNEL);
+    /* delay a time in milliseconds */
+    delay_ms(10U);
+
+    uint32_t vref_value = (ADC_IDATA1 * 3300 / 4096);
+    return vref_value;
 }
 

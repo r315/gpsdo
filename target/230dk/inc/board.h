@@ -55,12 +55,15 @@ void dac_init(void);
 void dac_duty_set(uint16_t duty);
 uint16_t dac_duty_get(void);
 uint32_t dac_voltage_get(void);
+void adc_init(void);
 
 i2cbus_t *board_i2c_get(void);
 
 uint8_t pps_init(void);
 
 void led_set(enum led_tag, uint8_t state);
+uint32_t vref_get(void);
+
 #ifdef __cplusplus
 }
 #endif

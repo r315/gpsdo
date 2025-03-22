@@ -57,6 +57,8 @@ $(DRIVERS_SOC)/src/gd32e23x_usart.c \
 $(DRIVERS_SOC)/src/gd32e23x_dma.c \
 $(DRIVERS_SOC)/src/gd32e23x_i2c.c \
 $(DRIVERS_SOC)/src/gd32e23x_timer.c \
+$(DRIVERS_SOC)/src/gd32e23x_rtc.c \
+$(DRIVERS_SOC)/src/gd32e23x_adc.c \
 $(DRIVERS_PATH)/i2c/i2c_gd32e230.c \
 $(DRIVERS_PATH)/uart/uart_gd32e23x.c \
 $(DRIVERS_PATH)/wdt/wdt_gd32e23x.c \

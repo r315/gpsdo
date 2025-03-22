@@ -13,7 +13,7 @@
 
 static uint32_t last_time_stamp;
 static uint32_t time_diff;
-static uint8_t nmea_output;
+static uint8_t nmea_output, plot_vref;
 static uint8_t gps_uart_buf[64];
 static uint16_t gps_uart_wr_idx;
 
@@ -314,6 +314,13 @@ static int nmeaCmd(int argc, char **argv)
     return CLI_OK;
 }
 
+static int vrefCmd(int argc, char **argv)
+{
+    plot_vref = argv[1][0] == '1' ? 1 : 0;
+    return CLI_OK;
+}
+
+
 cli_command_t cli_cmds [] = {
     {"help", ((int (*)(int, char**))CLI_Commands)},
     {"reset", resetCmd},
@@ -323,6 +330,7 @@ cli_command_t cli_cmds [] = {
     {"nmea", nmeaCmd},
     {"dac", dacCmd},
     {"pll", pllCmd},
+    {"vref", vrefCmd}
 };
 
 static uint8_t gps_line_get(void)
@@ -369,7 +377,15 @@ void gpsdo(void)
 
     WDT_Init(3000);
 
+    uint32_t ticks = GetTick();
+
+    CLI_HandleLine();
+
     while(1){
+        if(ElapsedTicks(ticks) > 100 && plot_vref){
+            printf("%lu\n", vref_get());
+            ticks = GetTick();
+        }
         if(CLI_ReadLine()){
             CLI_HandleLine();
         }
