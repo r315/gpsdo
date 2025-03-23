@@ -8,8 +8,6 @@ RELEASE=no
 # Features
 #######################################
 FEATURES = \
-FEATURE_TFT_DISPLAY=0 \
-FEATURE_CLI=0 \
 
 #######################################
 # paths
@@ -101,6 +99,8 @@ $(DEVICE) \
 $(FEATURES) \
 $(DEBUG) \
 $(VERSION) \
+FIFO_SIZE=128 \
+HXTAL_VALUE=13000000UL \
 
 #######################################
 # CFLAGS

@@ -16,6 +16,7 @@ static uint32_t time_diff;
 static uint8_t nmea_output, plot_vref;
 static uint8_t gps_uart_buf[64];
 static uint16_t gps_uart_wr_idx;
+static uint8_t i2c_buf[64];
 
 static uint8_t parseFreq(uint64_t *out, char *str)
 {
@@ -66,9 +67,9 @@ static void time_stamp_cb(uint32_t val)
 static int i2cCmd(int argc, char **argv)
 {
     int32_t val;
-    uint8_t i2c_buf[256], count;
+    uint8_t count;
+    uint8_t read = 0;
     i2cbus_t *i2c = board_i2c_get();
-
 
     if(!strcmp("help", argv[1]) || argc == 1){
         printf("Usage: i2c <operation>\n");
@@ -103,8 +104,6 @@ static int i2cCmd(int argc, char **argv)
             return CLI_OK;
         }
     }
-
-    uint8_t read = 0;
 
     if(!strcmp("rd", argv[1])){
         read = 1;
@@ -216,6 +215,8 @@ static int tsCmd(int argc, char **argv)
 
 static int pllCmd(int argc, char **argv)
 {
+    uint64_t freq;
+    int32_t value;
     i2cbus_t *i2c = board_i2c_get();
 
     if(!strcmp("init", argv[1])){
@@ -225,21 +226,18 @@ static int pllCmd(int argc, char **argv)
     }
 
     if (!strcmp("start", argv[1])){
-        int32_t val1;
         if(Si5351_DeviceStatusGet().status.REVID == 0){
             if(Si5351_Init(i2c, 0, 0) == 0){
                 printf("Failed to initialize Si5351");
             }
         }
 
-        if(CLI_Ia2i(argv[2], &val1)){
-            uint64_t freq;
+        if(CLI_Ia2i(argv[2], &value)){
             if(parseFreq(&freq, argv[3])){
-                Si5351_FreqSet((enum si5351_clock)val1, freq);
-
+                Si5351_FreqSet((enum si5351_clock)freq, freq);
                 if(Si5351_DeviceStatusGet().status.LOL_A == 1){
-                    Si5351_ClockPwrSet((enum si5351_clock)val1, 1);
-                    Si5351_OutputEnableSet((enum si5351_clock)val1, 1);
+                    Si5351_ClockPwrSet((enum si5351_clock)value, 1);
+                    Si5351_OutputEnableSet((enum si5351_clock)value, 1);
                 }
             }
         }
@@ -250,21 +248,19 @@ static int pllCmd(int argc, char **argv)
     }
 
      if(!strcmp("enable", argv[1])){
-        uint32_t val;
-        if(CLI_Ha2i(argv[2], &val)){
-            Si5351_ClockPwrSet((enum si5351_clock)val, 1);
-            Si5351_OutputEnableSet((enum si5351_clock)val, 1);
+        if(CLI_Ha2i(argv[2], (uint32_t*)&value)){
+            Si5351_ClockPwrSet((enum si5351_clock)value, 1);
+            Si5351_OutputEnableSet((enum si5351_clock)value, 1);
         }
     }
 
     if(!strcmp("disable", argv[1])){
-        uint32_t val;
-        if(CLI_Ha2i(argv[2], &val)){
-            Si5351_ClockPwrSet((enum si5351_clock)val, 0);
-            Si5351_OutputEnableSet((enum si5351_clock)val, 0);
+        if(CLI_Ha2i(argv[2], (uint32_t*)&value)){
+            Si5351_ClockPwrSet((enum si5351_clock)value, 0);
+            Si5351_OutputEnableSet((enum si5351_clock)value, 0);
         }
     }
-
+/*
     if (!strcmp("drive", argv[1])){
         uint32_t val1, val2;
         if(CLI_Ha2i(argv[2], &val1)){
@@ -292,7 +288,7 @@ static int pllCmd(int argc, char **argv)
             }
         }
     }
-
+*/
     return CLI_OK;
 }
 
