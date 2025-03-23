@@ -198,12 +198,12 @@ static int clearCmd(int argc, char **argv)
 static int tsCmd(int argc, char **argv)
 {
     if(!strcmp("start", argv[1])){
-        board_frequency_measurement_start(time_stamp_cb);
+        frequency_measurement_start(time_stamp_cb);
         return CLI_OK;
     }
 
     if(!strcmp("stop", argv[1])){
-        board_frequency_measurement_stop();
+        frequency_measurement_stop();
         return CLI_OK;
     }
 

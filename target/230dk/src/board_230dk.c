@@ -494,7 +494,7 @@ exit:
     return irc8mcal << 8 | irc8madj;
 }
 
-void board_frequency_measurement_start(void(*cb)(uint32_t))
+void frequency_measurement_start(void(*cb)(uint32_t))
 {
     Timer_Type *tmr;
     tim2_cb = cb;
@@ -566,7 +566,7 @@ void board_frequency_measurement_start(void(*cb)(uint32_t))
     NVIC_EnableIRQ(TIMER5_IRQn);
 }
 
-void board_frequency_measurement_stop(void)
+void frequency_measurement_stop(void)
 {
     rcu_periph_reset_enable(RCU_TIMER2RST);
     rcu_periph_reset_enable(RCU_TIMER14RST);
