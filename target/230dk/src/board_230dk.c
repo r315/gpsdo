@@ -125,11 +125,11 @@ typedef struct {
     volatile uint32_t CNT;      // 24
     volatile uint32_t PSC;      // 28
     volatile uint32_t CAR;      // 2C
-    volatile uint32_t RSV2;
+    volatile uint32_t RSV3;
     volatile uint32_t CH0CV;    // 34
-    volatile uint32_t RSV3[7];
+    volatile uint32_t RSV4[7];
     volatile uint32_t IRMP;     // 50
-    volatile uint32_t RSVD2[43];
+    volatile uint32_t RSV5[43];
     volatile uint32_t CFG;
 }Timer_TypeL2;
 
@@ -165,18 +165,18 @@ typedef struct {
     volatile uint32_t INTF;
     volatile uint32_t SWEVG;
     volatile uint32_t CHCTL0;
-    volatile uint32_t RSV1;
+    volatile uint32_t RSV2;
     volatile uint32_t CHCTL2;
     volatile uint32_t CNT;
     volatile uint32_t PSC;
     volatile uint32_t CAR;
     volatile uint32_t CREP;
     volatile uint32_t CH0CV;
-    volatile uint32_t RSV2[4];
+    volatile uint32_t RSV3[4];
     volatile uint32_t CCHP;
     volatile uint32_t DMACFG;
     volatile uint32_t DMATB;
-    volatile uint32_t RSVD2[43];
+    volatile uint32_t RSV4[43];
     volatile uint32_t CFG;
 }Timer_TypeL4;
 
@@ -496,7 +496,6 @@ exit:
 
 void frequency_measurement_start(void(*cb)(uint32_t))
 {
-    Timer_Type *tmr;
     tim2_cb = cb;
 
     rcu_periph_clock_enable(RCU_TIMER2);
@@ -516,44 +515,40 @@ void frequency_measurement_start(void(*cb)(uint32_t))
     gpio_mode_set(GPIOB, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO_PIN_14);
     gpio_af_set(GPIOB, GPIO_AF_1, GPIO_PIN_14);
 
-    tmr = TMR14;
-
-    tmr->SMCFG =
+    TMR14->SMCFG =
         TIMER_SMCFG_SMC |   // Select external clock mode 0
         (1 << 4);           // ITI1 as clock source
 
-    tmr->CHCTL0 =
+    TMR14->CHCTL0 =
         (1 << 0);           // CH0 capture on CI0FE0
-    tmr->CHCTL2 =
+    TMR14->CHCTL2 =
         TIMER_CHCTL2_CH0EN; // Enable CH0
 
-    tmr->PSC = 0;           // No prescaller
-    tmr->CAR = 0xFFFF;      // Full count
-    tmr->CNT = 0xF800;
-    tmr->CTL0 = 1;
+    TMR14->PSC = 0;           // No prescaller
+    TMR14->CAR = 0xFFFF;      // Full count
+    TMR14->CNT = 0xF800;
+    TMR14->CTL0 = 1;
 
-    tmr = TMR2;
-
-    tmr->SMCFG =
+    TMR2->SMCFG =
         TIMER_SMCFG_SMC1 |  // Enable external clock mode
         TIMER_SMCFG_SMC |   // Select external clock mode 0
         TIMER_SMCFG_TRGS;   // ETIFP as clock source
 
-    tmr->CTL1 =
+    TMR2->CTL1 =
         (2 << 4);           // Select UPE as Trigger event
 
-    tmr->CHCTL0 =
+    TMR2->CHCTL0 =
         (1 << 0);           // CH0 capture on CI0FE0
-    tmr->CHCTL2 =
+    TMR2->CHCTL2 =
         TIMER_CHCTL2_CH0EN; // Enable CH0
 
-    tmr->PSC = 0;           // No prescaller
-    tmr->CAR = 0xFFFF;      // Full count
-    tmr->DMAINTEN =
+    TMR2->PSC = 0;           // No prescaller
+    TMR2->CAR = 0xFFFF;      // Full count
+    TMR2->DMAINTEN =
         TIMER_DMAINTEN_CH0IE; // Interrut on capture
 
     NVIC_EnableIRQ(TIMER2_IRQn);
-    tmr->CTL0 = 1;
+    TMR2->CTL0 = 1;
 
     // Configure elaborated PPS led
     rcu_periph_clock_enable(RCU_TIMER5);
@@ -592,7 +587,7 @@ void TIMER5_IRQHandler(void)
 
 void dac_init(void)
 {
-    Timer_Type *tmr = TMR13;
+    Timer_TypeL2 *tmr = TMR13;
 
     rcu_periph_clock_enable(RCU_TIMER13);
     rcu_periph_reset_enable(RCU_TIMER13RST);
@@ -614,18 +609,16 @@ void dac_init(void)
 
 void dac_duty_set(uint16_t duty)
 {
-    Timer_Type *tmr = TMR13;
-
     if(duty > DAC_MAX_VAL){
         return;
     }
 
-    tmr->CH0CV = duty;
+    TMR13->CH0CV = duty;
 }
 
 uint16_t dac_duty_get(void)
 {
-    return ((Timer_Type *)TMR13)->CH0CV;
+    return TMR13->CH0CV;
 }
 
 uint32_t dac_voltage_get(void)
