@@ -76,6 +76,31 @@ typedef struct {
     volatile uint32_t CNT;
     volatile uint32_t PSC;
     volatile uint32_t CAR;
+    volatile uint32_t CREP;
+    volatile uint32_t CH0CV;
+    volatile uint32_t CH1CV;
+    volatile uint32_t CH2CV;
+    volatile uint32_t CH3CV;
+    volatile uint32_t CCHP;
+    volatile uint32_t DMACFG;
+    volatile uint32_t DMATB;
+    volatile uint32_t RSVD2[43];
+    volatile uint32_t CFG;
+}Timer_Advanced;
+
+typedef struct {
+    volatile uint32_t CTL0;
+    volatile uint32_t CTL1;
+    volatile uint32_t SMCFG;
+    volatile uint32_t DMAINTEN;
+    volatile uint32_t INTF;
+    volatile uint32_t SWEVG;
+    volatile uint32_t CHCTL0;
+    volatile uint32_t CHCTL1;
+    volatile uint32_t CHCTL2;
+    volatile uint32_t CNT;
+    volatile uint32_t PSC;
+    volatile uint32_t CAR;
     volatile uint32_t RSV0;
     volatile uint32_t CH0CV;
     volatile uint32_t CH1CV;
@@ -86,7 +111,74 @@ typedef struct {
     volatile uint32_t DMATB;
     volatile uint32_t RSVD2[43];
     volatile uint32_t CFG;
-}Timer_Type;
+}Timer_TypeL0;
+
+typedef struct {
+    volatile uint32_t CTL0;     // 00
+    volatile uint32_t RSV1[2];
+    volatile uint32_t DMAINTEN; // 0C
+    volatile uint32_t INTF;     // 10
+    volatile uint32_t SWEVG;    // 14
+    volatile uint32_t CHCTL0;   // 18
+    volatile uint32_t RSV2;
+    volatile uint32_t CHCTL2;   // 20
+    volatile uint32_t CNT;      // 24
+    volatile uint32_t PSC;      // 28
+    volatile uint32_t CAR;      // 2C
+    volatile uint32_t RSV2;
+    volatile uint32_t CH0CV;    // 34
+    volatile uint32_t RSV3[7];
+    volatile uint32_t IRMP;     // 50
+    volatile uint32_t RSVD2[43];
+    volatile uint32_t CFG;
+}Timer_TypeL2;
+
+typedef struct {
+    volatile uint32_t CTL0;
+    volatile uint32_t CTL1;
+    volatile uint32_t SMCFG;
+    volatile uint32_t DMAINTEN;
+    volatile uint32_t INTF;
+    volatile uint32_t SWEVG;
+    volatile uint32_t CHCTL0;
+    volatile uint32_t RSV1;
+    volatile uint32_t CHCTL2;
+    volatile uint32_t CNT;
+    volatile uint32_t PSC;
+    volatile uint32_t CAR;
+    volatile uint32_t CREP;
+    volatile uint32_t CH0CV;
+    volatile uint32_t CH1CV;
+    volatile uint32_t RSV2[3];
+    volatile uint32_t CCHP;
+    volatile uint32_t DMACFG;
+    volatile uint32_t DMATB;
+    volatile uint32_t RSVD2[43];
+    volatile uint32_t CFG;
+}Timer_TypeL3;
+
+typedef struct {
+    volatile uint32_t CTL0;
+    volatile uint32_t CTL1;
+    volatile uint32_t RSV1;
+    volatile uint32_t DMAINTEN;
+    volatile uint32_t INTF;
+    volatile uint32_t SWEVG;
+    volatile uint32_t CHCTL0;
+    volatile uint32_t RSV1;
+    volatile uint32_t CHCTL2;
+    volatile uint32_t CNT;
+    volatile uint32_t PSC;
+    volatile uint32_t CAR;
+    volatile uint32_t CREP;
+    volatile uint32_t CH0CV;
+    volatile uint32_t RSV2[4];
+    volatile uint32_t CCHP;
+    volatile uint32_t DMACFG;
+    volatile uint32_t DMATB;
+    volatile uint32_t RSVD2[43];
+    volatile uint32_t CFG;
+}Timer_TypeL4;
 
 typedef struct {
     volatile uint32_t CTL0;
@@ -102,12 +194,13 @@ typedef struct {
 }TimerBasic_Type;
 
 #define RCU_CMSIS       ((Rcu_Type *)RCU_BASE)
-#define TMR2            ((Timer_Type*)TIMER2)
+#define TMR0            ((Timer_Advanced*)TIMER0)
+#define TMR2            ((Timer_TypeL0*)TIMER2)
 #define TMR5            ((TimerBasic_Type*)TIMER5)
-#define TMR13           ((Timer_Type*)TIMER13)
-#define TMR14           ((Timer_Type*)TIMER14)
-#define TMR16           ((Timer_Type*)TIMER16)
-
+#define TMR13           ((Timer_TypeL2*)TIMER13)
+#define TMR14           ((Timer_TypeL3*)TIMER14)
+#define TMR15           ((Timer_TypeL4*)TIMER15)
+#define TMR16           ((Timer_TypeL4*)TIMER16)
 
 static void (*tim2_cb)(uint32_t);
 static volatile uint32_t ticms;
