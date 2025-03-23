@@ -6,10 +6,27 @@
 #include "system_gd32e23x.h"
 #include "io_expander.h"
 
-
 #define ON  1
 #define OFF 0
-#define RTC_BDCTL_RTCSRC_LXTAL    (1 << 8)
+#define RTC_BDCTL_RTCSRC_LXTAL      (1 << 8)
+#define HXTAL_MAX_FREQ              32000000UL
+#define HXTAL_MIN_FREQ              4000000UL
+#define SYS_CLK_MAX_FREQ            80000000UL
+
+enum clock_err{
+    CLOCK_OK = 0,
+    CLOCK_INVALID,
+    CLOCK_NOT_STABLE,
+    CLOCK_PLL_NOT_STABLE,
+    CLOCK_SWITCH_FAIL
+};
+
+struct pll_cfg{
+    uint32_t xtal;
+    uint32_t clk;
+    uint8_t mul;
+    uint8_t div;
+};
 
 typedef struct {
     union{
@@ -141,8 +158,6 @@ void board_init(void)
 
     system_clock_config();
 
-	SystemCoreClockUpdate();
-
 	SysTick_Config(SystemCoreClock / 1000);
 
     rcu_periph_clock_enable(RCU_GPIOA);
@@ -182,32 +197,158 @@ void __debugbreak(void)
     );
 }
 
-void system_clock_config(void)
-{
-    system_clock_72m_irc8m();
 
-    uint32_t timeout = 0xFFFF;
+
+/**
+ * @brief finds the higiest sys_clk
+ *
+ *  sys_clk = xtal*pllmul/predv
+ *
+ *  predv [2,16]
+ *  pllmul [2,32]
+ *  xtal 4000000 to 32000000
+ *
+ * @param cfg struct pll_cfg
+ * @return uint8_t
+ */
+void calculate_max_sys_clk(struct pll_cfg *cfg)
+{
+    cfg->clk = 0;
+    cfg->div = 0;
+    cfg->mul = 0;
+
+    for (uint8_t pllmul = 2; pllmul <= 32; pllmul++) {
+        uint32_t product = cfg->xtal * pllmul;
+        // The optimal `predv` is the smallest value that maximizes sys_clk
+        for (uint8_t predv = 2; predv <= 16; predv++) {
+            uint32_t clk = product / predv;
+
+            if(clk > SYS_CLK_MAX_FREQ){
+                continue;
+            }
+
+            if (clk > cfg->clk) {
+                cfg->clk = clk;
+                cfg->mul = pllmul;
+                cfg->div = predv;
+            }
+
+            // Since `predv` only increases the denominator, we can break early
+            if (clk < cfg->clk) {
+                break;
+            }
+        }
+    }
+}
+
+/**
+ * @brief Tries to configure the higest system clock
+ * from a given xtal
+ *
+
+ * @param xtal
+ * @return uint8_t
+ */
+uint8_t system_clock_from_xtal(uint32_t xtal)
+{
+    uint32_t timeout = 0U;
     uint32_t stab_flag = 0U;
 
-    /* enable HXTAL */
+    if (xtal > HXTAL_MAX_FREQ || HXTAL_MIN_FREQ > xtal){
+        return CLOCK_INVALID;
+    }
+
+    /* Enable high speed crystal */
     RCU_CTL0 |= RCU_CTL0_HXTALEN;
 
-    /* wait until HXTAL is stable or the startup time is longer than HXTAL_STARTUP_TIMEOUT */
+    /* wait until HXTAL is stable or the startup time is longer than timeout */
     do{
-        timeout--;
+        timeout++;
         stab_flag = (RCU_CTL0 & RCU_CTL0_HXTALSTB);
-    }while((0U == stab_flag) && timeout);
-
-    /* if fail */
-    if(0U == (RCU_CTL0 & RCU_CTL0_HXTALSTB)){
-        return;
     }
-    /* HXTAL is stable, enable output */
+    while((0U == stab_flag) && (HXTAL_STARTUP_TIMEOUT != timeout));
 
-    RCU_CMSIS->CFG0 = (RCU_CMSIS->CFG0 & ~(7 << 24)) | (6 << 24);
+    /* if fail, return without changing clock */
+    if(!(RCU_CTL0 & RCU_CTL0_HXTALSTB)){
+        return CLOCK_NOT_STABLE;
+    }
 
+    /* HXTAL is stable */
+    FMC_WS = (FMC_WS & (~FMC_WS_WSCNT)) | WS_WSCNT_2;
+
+    /* AHB = SYSCLK */
+    RCU_CFG0 |= RCU_AHB_CKSYS_DIV1;
+    /* APB2 = AHB */
+    RCU_CFG0 |= RCU_APB2_CKAHB_DIV1;
+    /* APB1 = AHB */
+    RCU_CFG0 |= RCU_APB1_CKAHB_DIV1;
+
+    struct pll_cfg cfg = {
+        .xtal = xtal
+    };
+
+    calculate_max_sys_clk(&cfg);
+
+    /* pll multiplier */
+    RCU_CFG0 = (RCU_CFG0 & ~(RCU_CFG0_PLLSEL | RCU_CFG0_PLLMF | RCU_CFG0_PLLDV)) |
+               RCU_PLLSRC_HXTAL | CFG0_PLLMF(cfg.mul - 2) | ((cfg.mul > 16) ? RCU_CFG0_PLLMF4 : 0);
+
+    /* pll prediv */
+    RCU_CFG1 = (RCU_CFG1 & ~(RCU_CFG1_PREDV)) | CFG1_PREDV(cfg.div - 1);
+
+    /* enable PLL */
+    RCU_CTL0 |= RCU_CTL0_PLLEN;
+
+    /* wait until PLL is stable */
+    timeout = 0;
+    do{
+        timeout++;
+        stab_flag = RCU_CTL0 & RCU_CTL0_PLLSTB;
+    }while((0U == stab_flag) && (HXTAL_STARTUP_TIMEOUT != timeout));
+
+    if(!(RCU_CTL0 & RCU_CTL0_PLLSTB)){
+        return CLOCK_PLL_NOT_STABLE;
+    }
+
+    /* select PLL as system clock */
+    RCU_CFG0 &= ~RCU_CFG0_SCS;
+    RCU_CFG0 |= RCU_CKSYSSRC_PLL;
+
+    /* wait until PLL is selected as system clock */
+     timeout = 0;
+    do{
+        timeout++;
+        stab_flag = RCU_CFG0 & RCU_CFG0_SCSS;
+    }while((RCU_SCSS_PLL != stab_flag) && (HXTAL_STARTUP_TIMEOUT != timeout));
+
+    if(RCU_SCSS_PLL != (RCU_CFG0 & RCU_CFG0_SCSS)){
+        return CLOCK_SWITCH_FAIL;
+    }
+
+    SystemCoreClock = cfg.clk;
+
+    return CLOCK_OK;
+}
+
+void system_clock_output_enable()
+{
+    RCU_CFG0 = (RCU_CFG0 & ~RCU_CFG0_CKOUTSEL) | RCU_CKOUTSRC_HXTAL;
     gpio_mode_set(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO_PIN_8);
     gpio_af_set(GPIOA, GPIO_AF_0, GPIO_PIN_2);
+}
+
+/**
+ * @brief Overriding weak function
+ * implemented in system_xxxx.c
+ */
+void system_clock_config(void)
+{
+    //system_clock_72m_irc8m();
+    system_clock_from_xtal(HXTAL_VALUE);
+
+    //SystemCoreClockUpdate();
+
+    system_clock_output_enable();
 }
 
 i2cbus_t *board_i2c_get(void)

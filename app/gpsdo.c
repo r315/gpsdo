@@ -363,6 +363,7 @@ void gpsdo(void)
     CLI_Clear();
 
     LOG_INF("gpsdo %s", VERSION);
+    LOG_INF("core speed %dMHz", (uint16_t)(SystemCoreClock/1000000UL));
 
     if(!pps_init()){
         DBG_WRN("Fail to start pps");
