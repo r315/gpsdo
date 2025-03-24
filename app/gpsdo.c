@@ -60,8 +60,13 @@ static void time_stamp_cb(uint32_t val)
 {
     time_diff = val - last_time_stamp;
     last_time_stamp = val;
-    //printf("TS: 0x%08lx diff: %ld (0x%08lx)\n", val, time_diff, time_diff);
-    printf("%ld\n", time_diff - 10000000UL);
+    printf("Count: %ld\n", time_diff);
+    //printf("%ld\n", time_diff - 10000000UL);
+}
+
+static void phase_cb(uint32_t val)
+{
+    printf("%ld\n", val);
 }
 
 static int i2cCmd(int argc, char **argv)
@@ -213,6 +218,21 @@ static int tsCmd(int argc, char **argv)
     return CLI_OK;
 }
 
+static int phaCmd(int argc, char **argv)
+{
+    if(!strcmp("start", argv[1])){
+        phase_measurement_start(phase_cb);
+        return CLI_OK;
+    }
+
+    if(!strcmp("stop", argv[1])){
+        phase_measurement_stop();
+        return CLI_OK;
+    }
+
+    return CLI_OK;
+}
+
 static int pllCmd(int argc, char **argv)
 {
     uint64_t freq;
@@ -326,7 +346,8 @@ cli_command_t cli_cmds [] = {
     {"nmea", nmeaCmd},
     {"dac", dacCmd},
     {"pll", pllCmd},
-    {"vref", vrefCmd}
+    {"vref", vrefCmd},
+    {"pha", phaCmd}
 };
 
 static uint8_t gps_line_get(void)

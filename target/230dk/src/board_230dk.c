@@ -203,6 +203,7 @@ typedef struct {
 #define TMR16           ((Timer_TypeL4*)TIMER16)
 
 static void (*tim2_cb)(uint32_t);
+static void (*tim0_cb)(uint32_t);
 static volatile uint32_t ticms;
 static serialbus_t uartbus_a, uartbus_b;
 static i2cbus_t i2cbus;
@@ -516,8 +517,8 @@ void frequency_measurement_start(void(*cb)(uint32_t))
     gpio_af_set(GPIOB, GPIO_AF_1, GPIO_PIN_14);
 
     TMR14->SMCFG =
-        TIMER_SMCFG_SMC |   // Select external clock mode 0
-        (1 << 4);           // ITI1 as clock source
+        TIMER_SMCFG_SMC |           // Select external clock mode 0
+        TIMER_SMCFG_TRGSEL_ITI1;    // ITI1 as clock source
 
     TMR14->CHCTL0 =
         (1 << 0);           // CH0 capture on CI0FE0
@@ -526,8 +527,8 @@ void frequency_measurement_start(void(*cb)(uint32_t))
 
     TMR14->PSC = 0;           // No prescaller
     TMR14->CAR = 0xFFFF;      // Full count
-    TMR14->CNT = 0xF800;
-    TMR14->CTL0 = 1;
+    //TMR14->CNT = 0xF800;
+    TMR14->CTL0 = TIMER_CTL0_CEN;
 
     TMR2->SMCFG =
         TIMER_SMCFG_SMC1 |  // Enable external clock mode
@@ -566,6 +567,53 @@ void frequency_measurement_stop(void)
     rcu_periph_reset_enable(RCU_TIMER2RST);
     rcu_periph_reset_enable(RCU_TIMER14RST);
     rcu_periph_reset_enable(RCU_TIMER5RST);
+}
+
+void phase_measurement_start(void(*cb)(uint32_t))
+{
+    rcu_periph_clock_enable(RCU_TIMER0);
+    rcu_periph_reset_enable(RCU_TIMER0RST);
+    rcu_periph_reset_disable(RCU_TIMER0RST);
+
+    tim0_cb = cb;
+
+    // Configure PA12 for TIMER0_ETI
+    gpio_mode_set(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO_PIN_12);
+    gpio_af_set(GPIOA, GPIO_AF_2, GPIO_PIN_12);
+
+    // Configure PA11 for TIMER0_CH3
+    gpio_mode_set(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO_PIN_11);
+    gpio_af_set(GPIOA, GPIO_AF_2, GPIO_PIN_11);
+
+    uint32_t tmr0_clk = rcu_clock_freq_get(CK_APB2);
+
+    TMR0->PSC = tmr0_clk / 1000000UL;      // Count us
+    TMR0->CAR = 5000;                      // 5ms max
+    TMR0->SMCFG =
+        TIMER_SLAVE_MODE_EVENT |           // Enable timer on event
+        TIMER_SMCFG_TRGSEL_ETIFP;          // Trigger event on ETIFP (TIMER0_ETI pin)
+
+    TMR0->CHCTL1 = (1 << 8);               // CH3 Input capture
+    TMR0->CHCTL2 = TIMER_CHCTL2_CH3EN;     // Enable CH3
+
+    TMR0->DMAINTEN = TIMER_DMAINTEN_CH3IE; // Enable interrupt
+
+    TMR0->CTL0 = TIMER_CTL0_SPM;           // Single pulse
+
+    NVIC_EnableIRQ(TIMER0_Channel_IRQn);
+}
+
+void phase_measurement_stop(void)
+{
+    rcu_periph_reset_enable(RCU_TIMER0RST);
+}
+
+void TIMER0_Channel_IRQHandler(void)
+{
+    if(tim0_cb){
+        tim0_cb(TMR0->CH3CV);
+    }
+    TMR0->INTF = 0;
 }
 
 void TIMER2_IRQHandler(void)

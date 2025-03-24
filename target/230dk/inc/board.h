@@ -50,6 +50,8 @@ void serial_passtrough(void);
 
 void frequency_measurement_start(void(*cb)(uint32_t));
 void frequency_measurement_stop(void);
+void phase_measurement_start(void(*cb)(uint32_t));
+void phase_measurement_stop(void);
 
 void dac_init(void);
 void dac_duty_set(uint16_t duty);
