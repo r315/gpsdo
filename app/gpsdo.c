@@ -314,12 +314,39 @@ static int pllCmd(int argc, char **argv)
 
 static int dacCmd(int argc, char **argv)
 {
-    uint32_t val;
+    int32_t val;
+
+    if(argc == 1){
+        printf("%d\n", dac_duty_get());
+    }
+
+    if(!strcmp("help", argv[1])){
+        printf("Usage: dac [args]\n");
+        printf("\tNo args for current duty value\n");
+        printf("\tduty,   set duty cycle 0-4095\n");
+        printf("\ttrim,   Enter trim mode, +,-,r,q keys\n");
+    }
 
     if(!strcmp("duty", argv[1])){
-        if(CLI_Ha2i(argv[2], &val)){
+        if(CLI_Ia2i(argv[2], &val)){
             dac_duty_set(val);
         }
+    }
+
+    if(!strcmp("trim", argv[1])){
+        val = dac_duty_get();
+        char c;
+        do{
+            printf("%lu    \r", val);
+            c = getchar();
+            switch(c){
+                case '+': if(val < DAC_MAX_VAL) val++; break;
+                case '-': if(val > 0) val--; break;
+                case 'r': val = DAC_MAX_VAL >> 1; break;
+                default: break;
+            }
+            dac_duty_set(val);
+        }while(c != 'q');
     }
     return CLI_OK;
 }
