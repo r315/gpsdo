@@ -10,6 +10,7 @@ extern "C" {
 #include <stdint.h>
 #include "i2c.h"
 #include "gd32e23x_gpio.h"
+#include "pcf8574.h"
 
 #define LED1_PIN_INIT  \
         gpio_mode_set(GPIOA, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO_PIN_8);

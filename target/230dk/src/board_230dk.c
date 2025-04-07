@@ -207,6 +207,7 @@ static void (*tim0_cb)(uint32_t);
 static volatile uint32_t ticms;
 static serialbus_t uartbus_a, uartbus_b;
 static i2cbus_t i2cbus;
+static ioexp_t *ioexp = &pcf8574_ioexp;
 
 static void serial_a_init(void) { UART_Init(&uartbus_a); }
 uint32_t serial_a_available(void) { return UART_Available(&uartbus_a); }
@@ -735,10 +736,10 @@ void led_set(enum led_tag tag, uint8_t state)
     switch(tag){
         case LED_PPS:
             if(state){
-                IOEXP_Clr(&i2cbus, color & 7);
+                ioexp->clr(&i2cbus, color & 7);
                 color = (color == 7) ? 1 : color + 1;
             }else
-                IOEXP_Set(&i2cbus, 7);
+                ioexp->set(&i2cbus, 7);
             break;
 
         case LED_LOCK:
