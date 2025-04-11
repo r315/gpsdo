@@ -554,6 +554,7 @@ void frequency_measurement_start(void(*cb)(uint32_t))
 
     // Configure elaborated PPS led
     rcu_periph_clock_enable(RCU_TIMER5);
+    rcu_periph_reset_disable(RCU_TIMER5RST);
 
     TMR5->CTL0 = TIMER_CTL0_SPM;
     TMR5->PSC = (rcu_clock_freq_get(CK_APB1) / 10000UL) - 1;
@@ -725,7 +726,8 @@ uint8_t pps_init(void)
     RCU_BDCTL |= RCU_BDCTL_RTCEN | RTC_BDCTL_RTCSRC_LXTAL;
     // Enable 1Hz output on PC13
     rtc_alter_output_config(RTC_CALIBRATION_1HZ, RTC_ALARM_OUTPUT_PP);
-
+    // Output mode
+    gpio_mode_set(GPIOC, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO_PIN_13);
     return 1;
 }
 

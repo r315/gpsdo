@@ -39,6 +39,7 @@ $(MIDDLEWARE_PATH)/cli-simple \
 $(TARGET_PATH)/inc \
 $(APP_PATH) \
 $(COMPONENT_PATH)/si5351 \
+$(COMPONENT_PATH)/io_expander \
 
 AS_INCLUDES =\
 
@@ -72,7 +73,7 @@ $(TARGET_PATH)/src/board_230dk.c \
 $(TARGET_PATH)/src/main.c \
 $(APP_PATH)/gpsdo.c \
 $(MIDDLEWARE_PATH)/cli-simple/cli_simple.c \
-$(MIDDLEWARE_PATH)/cli-simple/syscalls.c
+$(MIDDLEWARE_PATH)/cli-simple/syscalls.c \
 
 CPP_SOURCES = \
 
