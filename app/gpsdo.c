@@ -45,7 +45,7 @@ static uint8_t parseFreq(uint64_t *out, char *str)
     freq = value * SI5351_FREQ_MULT;
     // Parse decimal part
     value = 0;
-    CLI_Ia2i(str, &value);
+    CLI_Ia2i(ptr, &value);
     freq += value;
 
     if(freq > SI5351_MULTISYNTH_DIVBY4_FREQ * SI5351_FREQ_MULT){
@@ -241,25 +241,31 @@ static int pllCmd(int argc, char **argv)
 
     if(!strcmp("init", argv[1])){
         if(Si5351_Init(i2c, 0, 0) == 0){
-            printf("Failed to initialize Si5351");
+            printf("Failed to initialize Si5351\n");
         }
     }
 
     if (!strcmp("start", argv[1])){
         if(Si5351_DeviceStatusGet().status.REVID == 0){
             if(Si5351_Init(i2c, 0, 0) == 0){
-                printf("Failed to initialize Si5351");
+                printf("Failed to initialize Si5351\n");
+                return CLI_OK;
             }
         }
 
         if(CLI_Ia2i(argv[2], &value)){
             if(parseFreq(&freq, argv[3])){
-                Si5351_FreqSet((enum si5351_clock)freq, freq);
+                Si5351_FreqSet((enum si5351_clock)value, freq);
                 if(Si5351_DeviceStatusGet().status.LOL_A == 1){
                     Si5351_ClockPwrSet((enum si5351_clock)value, 1);
                     Si5351_OutputEnableSet((enum si5351_clock)value, 1);
+                    return CLI_OK;
                 }
             }
+        }
+        printf("Usage: start <clk> <freq>\n");
+    }
+
         }
     }
 
@@ -327,7 +333,7 @@ static int dacCmd(int argc, char **argv)
         printf("\ttrim,   Enter trim mode, +,-,r,q keys\n");
     }
 
-    if(!strcmp("duty", argv[1])){
+    if(!strcmp("value", argv[1])){
         if(CLI_Ia2i(argv[2], &val)){
             dac_duty_set(val);
         }
