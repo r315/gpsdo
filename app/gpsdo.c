@@ -266,6 +266,31 @@ static int pllCmd(int argc, char **argv)
         printf("Usage: start <clk> <freq>\n");
     }
 
+    if(!strcmp("trim", argv[1])){
+        if(CLI_Ia2i(argv[2], &value)){
+            //freq = (10000000 - 1000) * SI5351_FREQ_MULT;
+            //parseFreq(&freq, argv[3]);
+            int32_t val2 = 0;
+            freq = 0;
+            //CLI_Ia2i(argv[3], (int32_t*)&val2);
+            CLI_Ia2i(argv[3], (int32_t*)&freq);
+            freq *= SI5351_FREQ_MULT;
+            char c;
+            do{
+                printf("%lu    \r", (uint32_t)(freq + val2));
+                c = getchar();
+                switch(c){
+                    case '+':  val2++; break;
+                    case '-':  val2--; break;
+                    case '1':  val2 -= 100; break;
+                    case '2':  val2 += 100; break;
+                    case '3':  val2 -= 1000; break;
+                    case '4':  val2 += 1000; break;
+                    //case 'r': freq = DAC_MAX_VAL >> 1; break;
+                    default: break;
+                }
+                Si5351_FreqSet((enum si5351_clock)value, freq + val2);
+            }while(c != 'q');
         }
     }
 
