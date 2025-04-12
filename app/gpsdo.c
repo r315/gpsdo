@@ -11,8 +11,8 @@
 #include "logger.h"
 
 
-static uint32_t last_time_stamp;
-static uint32_t time_diff;
+static uint32_t last_counter;
+static uint32_t counts;
 static uint8_t nmea_output, plot_vref;
 static uint8_t gps_uart_buf[64];
 static uint16_t gps_uart_wr_idx;
@@ -56,12 +56,11 @@ static uint8_t parseFreq(uint64_t *out, char *str)
     return 1;
 }
 
-static void time_stamp_cb(uint32_t val)
+static void counter_cb(uint32_t counter)
 {
-    time_diff = val - last_time_stamp;
-    last_time_stamp = val;
-    printf("Count: %ld\n", time_diff);
-    //printf("%ld\n", time_diff - 10000000UL);
+    counts = counter - last_counter;
+    last_counter = counter;
+    printf("Count: %ld\n", counts);
 }
 
 static void phase_cb(uint32_t val)
@@ -200,10 +199,10 @@ static int clearCmd(int argc, char **argv)
     return CLI_OK;
 }
 
-static int tsCmd(int argc, char **argv)
+static int counterCmd(int argc, char **argv)
 {
     if(!strcmp("start", argv[1])){
-        frequency_measurement_start(time_stamp_cb);
+        frequency_measurement_start(counter_cb);
         return CLI_OK;
     }
 
@@ -212,8 +211,8 @@ static int tsCmd(int argc, char **argv)
         return CLI_OK;
     }
 
-    printf("TS:      0x%08lx\n", last_time_stamp);
-    printf("TS diff: 0x%08lx\n", time_diff);
+    printf("counter: 0x%08lx\n", last_counter);
+    printf("count:   0x%08lx\n", counts);
 
     return CLI_OK;
 }
@@ -400,7 +399,7 @@ cli_command_t cli_cmds [] = {
     {"reset", resetCmd},
     {"clear", clearCmd},
     {"i2c", i2cCmd},
-    {"ts", tsCmd},
+    {"cnt", counterCmd},
     {"nmea", nmeaCmd},
     {"dac", dacCmd},
     {"pll", pllCmd},
