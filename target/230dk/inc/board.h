@@ -11,6 +11,7 @@ extern "C" {
 #include "i2c.h"
 #include "gd32e23x_gpio.h"
 #include "pcf8574.h"
+#include "stdinout.h"
 
 #define LED1_PIN_INIT  \
         gpio_mode_set(GPIOA, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO_PIN_8);
@@ -39,13 +40,8 @@ void __debugbreak(void);
 void board_config_output(uint32_t frequency);
 int32_t board_trim_irc(int8_t adj);
 
-uint32_t serial_a_available(void);
-uint32_t serial_a_read(uint8_t *buf, uint32_t len);
-uint32_t serial_a_write(const uint8_t *buf, uint32_t len);
-
-uint32_t serial_b_available(void);
-uint32_t serial_b_read(uint8_t *buf, uint32_t len);
-uint32_t serial_b_write(const uint8_t *buf, uint32_t len);
+extern stdinout_t serial_a_ops;
+extern stdinout_t serial_b_ops;
 
 void serial_passtrough(void);
 

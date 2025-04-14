@@ -411,8 +411,8 @@ static uint8_t gps_line_get(void)
 {
     uint8_t c, len;
 
-    if(serial_b_available()){
-        serial_b_read(&c, 1);
+    if(serial_b_ops.available()){
+        serial_b_ops.read(&c, 1);
         gps_uart_buf[gps_uart_wr_idx++] = c;
         if(c == '\n'){
             // no need for double buffer
@@ -430,13 +430,13 @@ static void process_gps_output(void)
 {
     uint8_t len;
     if((len = gps_line_get()) > 0){
-        serial_a_write(gps_uart_buf, len);
+        serial_a_ops.write(gps_uart_buf, len);
     }
 }
 
 void gpsdo(void)
 {
-    CLI_Init("gpsdo >");
+    CLI_Init("gpsdo >", &serial_a_ops);
     CLI_RegisterCommand(cli_cmds, sizeof(cli_cmds) / sizeof(cli_command_t));
     CLI_Clear();
 

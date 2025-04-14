@@ -16,8 +16,8 @@ int main(void)
 
     gpsdo();
 
-    while(1)
-    {
+    while(1) {
     }
+    return 0;
 }
 

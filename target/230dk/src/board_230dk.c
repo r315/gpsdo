@@ -209,21 +209,26 @@ static serialbus_t uartbus_a, uartbus_b;
 static i2cbus_t i2cbus;
 static ioexp_t *ioexp = &pcf8574_ioexp;
 
-static void serial_a_init(void) { UART_Init(&uartbus_a); }
-uint32_t serial_a_available(void) { return UART_Available(&uartbus_a); }
-uint32_t serial_a_read(uint8_t *buf, uint32_t len) { return UART_Read(&uartbus_a, buf, len); }
-uint32_t serial_a_write(const uint8_t *buf, uint32_t len) { return UART_Write(&uartbus_a, buf, len); }
+int serial_a_available(void) { return UART_Available(&uartbus_a); }
+int serial_a_read(char *buf, int len) { return UART_Read(&uartbus_a, buf, len); }
+int serial_a_write(const char *buf, int len) { return UART_Write(&uartbus_a, buf, len); }
 
-static stdout_ops_t stdout_ops_serial = {
-    .init = serial_a_init,
+stdinout_t serial_a_ops = {
     .available = serial_a_available,
     .read = serial_a_read,
     .write = serial_a_write
 };
 
-uint32_t serial_b_available(void) { return UART_Available(&uartbus_b); }
-uint32_t serial_b_read(uint8_t *buf, uint32_t len) { return UART_Read(&uartbus_b, buf, len); }
-uint32_t serial_b_write(const uint8_t *buf, uint32_t len) { return UART_Write(&uartbus_b, buf, len); }
+int serial_b_available(void) { return UART_Available(&uartbus_b); }
+int serial_b_read(char *buf, int len) { return UART_Read(&uartbus_b, buf, len); }
+int serial_b_write(const char *buf, int len) { return UART_Write(&uartbus_b, buf, len); }
+
+stdinout_t serial_b_ops = {
+    .available = serial_b_available,
+    .read = serial_b_read,
+    .write = serial_b_write
+};
+
 
 void delay_ms(uint32_t ms)
 {
@@ -263,6 +268,8 @@ void board_init(void)
     uartbus_a.bus = UART_BUS0;
     uartbus_a.speed = 115200;
 
+    UART_Init(&uartbus_a);
+
     uartbus_b.bus = UART_BUS1;
     uartbus_b.speed = 9600;
 
@@ -272,8 +279,6 @@ void board_init(void)
     i2cbus.bus_num = I2C_BUS3;
 
     I2C_Init(&i2cbus);
-
-    redirect_stdout(&stdout_ops_serial);
 
     dac_init();
     adc_init();
