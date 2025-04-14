@@ -73,7 +73,7 @@ $(TARGET_PATH)/src/board_230dk.c \
 $(TARGET_PATH)/src/main.c \
 $(APP_PATH)/gpsdo.c \
 $(MIDDLEWARE_PATH)/cli-simple/cli_simple.c \
-$(MIDDLEWARE_PATH)/cli-simple/syscalls.c \
+$(TARGET_PATH)/src/syscalls.c \
 
 CPP_SOURCES = \
 
@@ -90,7 +90,7 @@ DEBUG	 =DEBUG=0
 GIT_TAG :=$(shell git describe --abbrev=0 --tags 2>/dev/null || true)
 VERSION :=VERSION=\"$(GIT_TAG)\"
 else
-OPT   =-Og -g -gdwarf-2 -Wall#-Wextra
+OPT   =-Og -g -gdwarf-2 #-Wextra
 DEBUG    =DEBUG=1
 endif
 
@@ -146,8 +146,9 @@ SPECS =--specs=rdimon.specs
 LDLIBS =-nostartfiles -lc -lrdimon
 else
 SPECS=--specs=nosys.specs --specs=nano.specs
-#-nostdlib -lstd++ -lnosys -lm
-LIBS =-lstdc++
+#LIBS =-nostdlib -lnosys
+#LIBS =-lstdc++ -lm
+LIBS =-lgcc -lm
 endif
 
 #######################################

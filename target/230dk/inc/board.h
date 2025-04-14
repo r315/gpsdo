@@ -23,12 +23,22 @@ extern "C" {
 #define DAC_MAX_VAL     0x0FFF      // 12bit DAC
 #define LED_PPS_MASK    (3 << 1)
 
+#define VCC5V0          4420          // OXCO supply
+#define VDDA            3300          // ADC reference voltage in mv
+#define VREF            2500          // Vref from LT1009
+#define ADC_RES         4096          // 12-bit ADC resolution
+
+#define THM_ADC_CH      ADC_CHANNEL_5
+#define THM_R_FIXED     9840.0        // Pull-up resistor value in ohms
+#define THM_BETA        3950.0        // Beta parameter of the NTC thermistor
+#define THM_T0          298.15        // 25°C in Kelvin
+#define THM_R0          10000.0       // Resistance at 25°C (10kΩ)
+
 enum led_tag{
     LED_PPS = 0,
     LED_LOCK,
     LED_ALM
 };
-
 
 void board_init(void);
 void delay_ms(uint32_t ms);
@@ -55,13 +65,16 @@ void dac_duty_set(uint16_t duty);
 uint16_t dac_duty_get(void);
 uint32_t dac_voltage_get(void);
 void adc_init(void);
+uint16_t adc_get(uint8_t ch);
+uint32_t adc_voltage_get(uint16_t raw);
+float temperature_get(void);
 
 i2cbus_t *board_i2c_get(void);
 
 uint8_t pps_init(void);
 
 void led_set(enum led_tag, uint8_t state);
-uint32_t vref_get(void);
+
 
 #ifdef __cplusplus
 }

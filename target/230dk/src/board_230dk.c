@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <math.h>
 #include "board.h"
 #include "syscalls.h"
 #include "uart.h"
@@ -26,6 +27,12 @@ struct pll_cfg{
     uint32_t clk;
     uint8_t mul;
     uint8_t div;
+};
+
+struct adc_insert_channel{
+    uint8_t rank;
+    uint8_t channel;
+    uint32_t sample_time;
 };
 
 typedef struct {
@@ -684,14 +691,26 @@ uint32_t dac_voltage_get(void)
 
 void adc_init(void)
 {
+    struct adc_insert_channel adc_channels[] ={
+        {0U, ADC_CHANNEL_16, ADC_SAMPLETIME_239POINT5},
+        {1U, ADC_CHANNEL_17, ADC_SAMPLETIME_239POINT5},
+        {2U, THM_ADC_CH, ADC_SAMPLETIME_239POINT5},
+    };
+
     rcu_periph_clock_enable(RCU_ADC);
     rcu_adc_clock_config(RCU_ADCCK_APB2_DIV6);
-     /* ADC channel length config */
-    adc_channel_length_config(ADC_INSERTED_CHANNEL, 2);
-    /* ADC temperature sensor channel config */
-    adc_inserted_channel_config(0U, ADC_CHANNEL_16, ADC_SAMPLETIME_239POINT5);
-    /* ADC internal reference voltage channel config */
-    adc_inserted_channel_config(1U, ADC_CHANNEL_17, ADC_SAMPLETIME_239POINT5);
+
+    /* ADC channel length config */
+    uint8_t nchannels = sizeof(adc_channels) / sizeof(struct adc_insert_channel);
+    adc_channel_length_config(ADC_INSERTED_CHANNEL, nchannels);
+
+    for(int i = 0; i < nchannels; i++){
+        /* ADC channel config */
+        adc_inserted_channel_config(adc_channels[i].rank,
+                                    adc_channels[i].channel,
+                                    adc_channels[i].sample_time);
+    }
+
     /* ADC trigger config */
     adc_external_trigger_source_config(ADC_INSERTED_CHANNEL, ADC_EXTTRIG_INSERTED_NONE);
     /* ADC data alignment config */
@@ -708,6 +727,56 @@ void adc_init(void)
     adc_calibration_enable();
 }
 
+uint16_t adc_get(uint8_t ch)
+{
+    uint32_t value = 0;
+
+    /* ADC software trigger enable */
+    adc_software_trigger_enable(ADC_INSERTED_CHANNEL);
+    /* delay a time in milliseconds */
+    delay_ms(10U);
+
+    switch(ch){
+        case THM_ADC_CH:
+            value = ADC_IDATA2;
+            break;
+        case ADC_CHANNEL_16:
+            value = ADC_IDATA0;
+            break;
+        case ADC_CHANNEL_17:
+            value = ADC_IDATA1;
+            break;
+    }
+
+    return value;
+}
+
+uint32_t adc_voltage_get(uint16_t raw)
+{
+    return (raw * VDDA) / ADC_RES;
+}
+
+float temperature_get(void)
+{
+    int voltage = adc_voltage_get(adc_get(THM_ADC_CH));
+
+    if (voltage == 0)
+        return -273.15f;
+
+    // Calculate thermistor resistance
+    float r_ntc = (THM_R_FIXED * voltage) / (VCC5V0 - voltage);
+
+    // Apply Beta formula to get temperature in Kelvin
+    float temp_k = 1.0f / ( (1.0f / THM_T0) + (1.0f / THM_BETA) * log(r_ntc / THM_R0) );
+
+    // Convert Kelvin to Celsius
+    return temp_k - 273.15f;
+}
+
+/**
+ * @brief Generates PPS signal from external 32768Hz oscillator
+ * using RTC peripheral.
+ */
 uint8_t pps_init(void)
 {
     uint8_t retry = 10;
@@ -727,6 +796,7 @@ uint8_t pps_init(void)
             return 0;
         }
     }while(!(RCU_BDCTL & RCU_BDCTL_LXTALSTB));
+
     // Enable RTC and use LXTAL
     RCU_BDCTL |= RCU_BDCTL_RTCEN | RTC_BDCTL_RTCSRC_LXTAL;
     // Enable 1Hz output on PC13

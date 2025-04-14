@@ -13,7 +13,7 @@
 
 static uint32_t last_counter;
 static uint32_t counts;
-static uint8_t nmea_output, plot_vref;
+static uint8_t nmea_output, print_adc;
 static uint8_t gps_uart_buf[64];
 static uint16_t gps_uart_wr_idx;
 static uint8_t i2c_buf[64];
@@ -387,9 +387,9 @@ static int nmeaCmd(int argc, char **argv)
     return CLI_OK;
 }
 
-static int vrefCmd(int argc, char **argv)
+static int adcCmd(int argc, char **argv)
 {
-    plot_vref = argv[1][0] == '1' ? 1 : 0;
+    print_adc = argv[1][0] == '1' ? 1 : 0;
     return CLI_OK;
 }
 
@@ -403,7 +403,7 @@ cli_command_t cli_cmds [] = {
     {"nmea", nmeaCmd},
     {"dac", dacCmd},
     {"pll", pllCmd},
-    {"vref", vrefCmd},
+    {"adc", adcCmd},
     {"pha", phaCmd}
 };
 
@@ -457,8 +457,10 @@ void gpsdo(void)
     CLI_HandleLine();
 
     while(1){
-        if(ElapsedTicks(ticks) > 100 && plot_vref){
-            printf("%lu\n", vref_get());
+        if(ElapsedTicks(ticks) > 500 && print_adc){
+            float temp = temperature_get();
+            printf("%d.%d\n", (int)temp, (int)(temp*10)%10);
+            //printf("%lu\n", adc_get(5));
             ticks = GetTick();
         }
         if(CLI_ReadLine()){
