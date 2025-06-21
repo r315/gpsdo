@@ -461,6 +461,16 @@ i2cbus_t *board_i2c_get(void)
     return &i2cbus;
 }
 
+uint16_t board_i2c_write(uint8_t dev_addr, const uint8_t *data, uint16_t size)
+{
+    return I2C_Write(&i2cbus, dev_addr, data, size);
+}
+
+uint16_t board_i2c_read(uint8_t dev_addr, uint8_t *data, uint16_t size)
+{
+    return I2C_Read(&i2cbus, dev_addr, data, size);
+}
+
 int32_t board_trim_irc(int8_t adj)
 {
     uint16_t irc8mcal = RCU_CMSIS->CTL0_BIT.IRC8MCALIB;

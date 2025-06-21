@@ -70,6 +70,9 @@ uint32_t adc_voltage_get(uint16_t raw);
 float temperature_get(void);
 
 i2cbus_t *board_i2c_get(void);
+uint16_t board_i2c_write(uint8_t dev_addr, const uint8_t *data, uint16_t size);
+uint16_t board_i2c_read(uint8_t dev_addr, uint8_t *data, uint16_t size);
+
 
 uint8_t pps_init(void);
 
