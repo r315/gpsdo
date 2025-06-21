@@ -13,12 +13,17 @@ extern "C" {
 #include "pcf8574.h"
 #include "stdinout.h"
 
+#define FALSE           0
+#define TRUE            1
+#define OFF             FALSE
+#define ON              TRUE
+
 #define LED1_PIN_INIT  \
         gpio_mode_set(GPIOA, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO_PIN_8);
 
-#define LED1_OFF    gpio_bit_write(GPIOA, GPIO_PIN_8, SET)
-#define LED1_ON     gpio_bit_write(GPIOA, GPIO_PIN_8, RESET)
-#define LED1_TOGGLE gpio_bit_toggle(GPIOA, GPIO_PIN_8)
+#define LED1_OFF        gpio_bit_write(GPIOA, GPIO_PIN_8, SET)
+#define LED1_ON         gpio_bit_write(GPIOA, GPIO_PIN_8, RESET)
+#define LED1_TOGGLE     gpio_bit_toggle(GPIOA, GPIO_PIN_8)
 
 #define DAC_MAX_VAL     0x0FFF      // 12bit DAC
 #define LED_PPS_MASK    (3 << 1)
@@ -40,44 +45,66 @@ enum led_tag{
     LED_ALM
 };
 
+/* board low level */
 void board_init(void);
+#if ENABLE_IRC8_TRIM
+int32_t board_trim_irc(int8_t adj);
+#endif
+i2cbus_t* board_i2c_get(void);
+uint16_t board_i2c_write(uint8_t dev_addr, const uint8_t *data, uint16_t size);
+uint16_t board_i2c_read(uint8_t dev_addr, uint8_t *data, uint16_t size);
+void board_system_clock_output(uint8_t en);
+void board_reset(void);
+
+/* Time related functions */
 void delay_ms(uint32_t ms);
-uint32_t ElapsedTicks(uint32_t start_ticks);
-uint32_t GetTick(void);
-void SW_Reset(void);
+uint32_t elapsed_ms(uint32_t start_ms);
+uint32_t get_ms(void);
+
+/* System functions */
 void __debugbreak(void);
 
-void board_config_output(uint32_t frequency);
-int32_t board_trim_irc(int8_t adj);
-
-extern stdinout_t serial_a_ops;
-extern stdinout_t serial_b_ops;
-
-void serial_passtrough(void);
-
+/* Frequency counter */
 void frequency_measurement_start(void(*cb)(uint32_t));
 void frequency_measurement_stop(void);
 void phase_measurement_start(void(*cb)(uint32_t));
 void phase_measurement_stop(void);
 
+/* DAC */
 void dac_init(void);
 void dac_duty_set(uint16_t duty);
 uint16_t dac_duty_get(void);
 uint32_t dac_voltage_get(void);
+
+/* ADC */
 void adc_init(void);
 uint16_t adc_get(uint8_t ch);
 uint32_t adc_voltage_get(uint16_t raw);
+
+/* Temperature sensor */
 float temperature_get(void);
 
-i2cbus_t *board_i2c_get(void);
-uint16_t board_i2c_write(uint8_t dev_addr, const uint8_t *data, uint16_t size);
-uint16_t board_i2c_read(uint8_t dev_addr, uint8_t *data, uint16_t size);
-
-
+/* PPS Generation */
 uint8_t pps_init(void);
+void pps_out_select(uint8_t in);
 
+/* LED */
 void led_set(enum led_tag, uint8_t state);
 
+/* User Interface */
+
+/* Clock generator */
+
+/* Main ouput */
+void main_out_select(uint8_t in);
+
+/* EEPROM */
+uint8_t settings_load(uint8_t *data, uint8_t len);
+uint8_t settings_save(const uint8_t *data, uint8_t len);
+
+/* Global varaiables */
+extern stdinout_t serial_a_ops;
+extern stdinout_t serial_b_ops;
 
 #ifdef __cplusplus
 }

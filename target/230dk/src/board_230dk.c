@@ -5,10 +5,9 @@
 #include "i2c.h"
 #include "system_gd32e23x.h"
 #include "io_expander.h"
+#include "gd32e23x_def.h"
 
-#define ON  1
-#define OFF 0
-#define RTC_BDCTL_RTCSRC_LXTAL      (1 << 8)
+
 #define HXTAL_MAX_FREQ              32000000UL
 #define HXTAL_MIN_FREQ              4000000UL
 #define SYS_CLK_MAX_FREQ            80000000UL
@@ -34,179 +33,6 @@ struct adc_insert_channel{
     uint32_t sample_time;
 };
 
-typedef struct {
-    union{
-        volatile uint32_t CTL0;
-        struct {
-            volatile uint32_t IRC8MEN : 1;
-            volatile uint32_t IRC8MSTB : 1;
-            volatile uint32_t rsvd0 : 1;
-            volatile uint32_t IRC8MADJ : 5;
-            volatile uint32_t IRC8MCALIB : 8;
-            volatile uint32_t HXTALEN : 1;
-            volatile uint32_t HXTALSTB : 1;
-            volatile uint32_t HXTALBPS : 1;
-            volatile uint32_t CLKMEN : 1;
-            volatile uint32_t rsvd1 : 4;
-            volatile uint32_t PLLEN : 1;
-            volatile uint32_t PLLSTB : 1;
-        };
-    }CTL0_BIT;
-    volatile uint32_t CFG0;
-    volatile uint32_t INT;
-    volatile uint32_t APB2RST;
-    volatile uint32_t APB1RST;
-    volatile uint32_t AHBEN;
-    volatile uint32_t APB2EN;
-    volatile uint32_t APB1EN;
-    volatile uint32_t BDCTL;
-    volatile uint32_t AHBRST;
-    volatile uint32_t CFG1;
-    volatile uint32_t CFG2;
-    volatile uint32_t CTL1;
-    uint32_t rsvd[0x100 - 0x34];
-    volatile uint32_t VKEY;
-    volatile uint32_t DSV;
-}Rcu_Type;
-
-typedef struct {
-    volatile uint32_t CTL0;
-    volatile uint32_t CTL1;
-    volatile uint32_t SMCFG;
-    volatile uint32_t DMAINTEN;
-    volatile uint32_t INTF;
-    volatile uint32_t SWEVG;
-    volatile uint32_t CHCTL0;
-    volatile uint32_t CHCTL1;
-    volatile uint32_t CHCTL2;
-    volatile uint32_t CNT;
-    volatile uint32_t PSC;
-    volatile uint32_t CAR;
-    volatile uint32_t CREP;
-    volatile uint32_t CH0CV;
-    volatile uint32_t CH1CV;
-    volatile uint32_t CH2CV;
-    volatile uint32_t CH3CV;
-    volatile uint32_t CCHP;
-    volatile uint32_t DMACFG;
-    volatile uint32_t DMATB;
-    volatile uint32_t RSVD2[43];
-    volatile uint32_t CFG;
-}Timer_Advanced;
-
-typedef struct {
-    volatile uint32_t CTL0;
-    volatile uint32_t CTL1;
-    volatile uint32_t SMCFG;
-    volatile uint32_t DMAINTEN;
-    volatile uint32_t INTF;
-    volatile uint32_t SWEVG;
-    volatile uint32_t CHCTL0;
-    volatile uint32_t CHCTL1;
-    volatile uint32_t CHCTL2;
-    volatile uint32_t CNT;
-    volatile uint32_t PSC;
-    volatile uint32_t CAR;
-    volatile uint32_t RSV0;
-    volatile uint32_t CH0CV;
-    volatile uint32_t CH1CV;
-    volatile uint32_t CH2CV;
-    volatile uint32_t CH3CV;
-    volatile uint32_t RSV1;
-    volatile uint32_t DMACFG;
-    volatile uint32_t DMATB;
-    volatile uint32_t RSVD2[43];
-    volatile uint32_t CFG;
-}Timer_TypeL0;
-
-typedef struct {
-    volatile uint32_t CTL0;     // 00
-    volatile uint32_t RSV1[2];
-    volatile uint32_t DMAINTEN; // 0C
-    volatile uint32_t INTF;     // 10
-    volatile uint32_t SWEVG;    // 14
-    volatile uint32_t CHCTL0;   // 18
-    volatile uint32_t RSV2;
-    volatile uint32_t CHCTL2;   // 20
-    volatile uint32_t CNT;      // 24
-    volatile uint32_t PSC;      // 28
-    volatile uint32_t CAR;      // 2C
-    volatile uint32_t RSV3;
-    volatile uint32_t CH0CV;    // 34
-    volatile uint32_t RSV4[7];
-    volatile uint32_t IRMP;     // 50
-    volatile uint32_t RSV5[43];
-    volatile uint32_t CFG;
-}Timer_TypeL2;
-
-typedef struct {
-    volatile uint32_t CTL0;
-    volatile uint32_t CTL1;
-    volatile uint32_t SMCFG;
-    volatile uint32_t DMAINTEN;
-    volatile uint32_t INTF;
-    volatile uint32_t SWEVG;
-    volatile uint32_t CHCTL0;
-    volatile uint32_t RSV1;
-    volatile uint32_t CHCTL2;
-    volatile uint32_t CNT;
-    volatile uint32_t PSC;
-    volatile uint32_t CAR;
-    volatile uint32_t CREP;
-    volatile uint32_t CH0CV;
-    volatile uint32_t CH1CV;
-    volatile uint32_t RSV2[3];
-    volatile uint32_t CCHP;
-    volatile uint32_t DMACFG;
-    volatile uint32_t DMATB;
-    volatile uint32_t RSVD2[43];
-    volatile uint32_t CFG;
-}Timer_TypeL3;
-
-typedef struct {
-    volatile uint32_t CTL0;
-    volatile uint32_t CTL1;
-    volatile uint32_t RSV1;
-    volatile uint32_t DMAINTEN;
-    volatile uint32_t INTF;
-    volatile uint32_t SWEVG;
-    volatile uint32_t CHCTL0;
-    volatile uint32_t RSV2;
-    volatile uint32_t CHCTL2;
-    volatile uint32_t CNT;
-    volatile uint32_t PSC;
-    volatile uint32_t CAR;
-    volatile uint32_t CREP;
-    volatile uint32_t CH0CV;
-    volatile uint32_t RSV3[4];
-    volatile uint32_t CCHP;
-    volatile uint32_t DMACFG;
-    volatile uint32_t DMATB;
-    volatile uint32_t RSV4[43];
-    volatile uint32_t CFG;
-}Timer_TypeL4;
-
-typedef struct {
-    volatile uint32_t CTL0;
-    volatile uint32_t CTL1;
-    volatile uint32_t rsvd_1;
-    volatile uint32_t DMAINTEN;
-    volatile uint32_t INTF;
-    volatile uint32_t SWEVG;
-    volatile uint32_t rsvd_2[3];
-    volatile uint32_t CNT;
-    volatile uint32_t PSC;
-    volatile uint32_t CAR;
-}TimerBasic_Type;
-
-#define RCU_CMSIS       ((Rcu_Type *)RCU_BASE)
-#define TMR0            ((Timer_Advanced*)TIMER0)
-#define TMR2            ((Timer_TypeL0*)TIMER2)
-#define TMR5            ((TimerBasic_Type*)TIMER5)
-#define TMR13           ((Timer_TypeL2*)TIMER13)
-#define TMR14           ((Timer_TypeL3*)TIMER14)
-#define TMR15           ((Timer_TypeL4*)TIMER15)
-#define TMR16           ((Timer_TypeL4*)TIMER16)
 
 static void (*tim2_cb)(uint32_t);
 static void (*tim0_cb)(uint32_t);
@@ -235,77 +61,10 @@ stdinout_t serial_b_ops = {
     .write = serial_b_write
 };
 
-void delay_ms(uint32_t ms)
-{
-    volatile uint32_t end = ticms + ms;
-    while (ticms < end){ }
-}
-
-uint32_t ElapsedTicks(uint32_t start_ticks)
-{
-	int32_t delta = GetTick() - start_ticks;
-    return (delta < 0) ? -delta : delta;
-}
-
-inline uint32_t GetTick(void)
-{
-    return ticms;
-}
-
-void SysTick_Handler(void)
-{
-    ticms++;
-}
-
-void board_init(void)
-{
-    LED1_PIN_INIT;
-
-    system_clock_config();
-
-	SysTick_Config(SystemCoreClock / 1000);
-
-    rcu_periph_clock_enable(RCU_GPIOA);
-    rcu_periph_clock_enable(RCU_GPIOB);
-    rcu_periph_clock_enable(RCU_GPIOC);
-    rcu_periph_clock_enable(RCU_GPIOF);
-
-    uartbus_a.bus = UART_BUS0;
-    uartbus_a.speed = 115200;
-
-    UART_Init(&uartbus_a);
-
-    uartbus_b.bus = UART_BUS1;
-    uartbus_b.speed = 9600;
-
-    UART_Init(&uartbus_b);
-
-    i2cbus.speed = 100000;
-    i2cbus.bus_num = I2C_BUS3;
-
-    I2C_Init(&i2cbus);
-
-    dac_init();
-    adc_init();
-}
-
-void SW_Reset(void)
-{
-    NVIC_SystemReset();
-}
-
-void __debugbreak(void)
-{
-    asm volatile
-    (
-        "bkpt #01 \n"
-    );
-}
-
 
 
 /**
- * @brief finds the higiest sys_clk
+ * @brief finds the higiest possible system clock
  *
  *  sys_clk = xtal*pllmul/predv
  *
@@ -316,7 +75,7 @@ void __debugbreak(void)
  * @param cfg struct pll_cfg
  * @return uint8_t
  */
-void calculate_max_sys_clk(struct pll_cfg *cfg)
+static void system_clock_max(struct pll_cfg *cfg)
 {
     cfg->clk = 0;
     cfg->div = 0;
@@ -345,7 +104,6 @@ void calculate_max_sys_clk(struct pll_cfg *cfg)
         }
     }
 }
-
 /**
  * @brief Tries to configure the higest system clock
  * from a given xtal
@@ -354,7 +112,7 @@ void calculate_max_sys_clk(struct pll_cfg *cfg)
  * @param xtal
  * @return uint8_t
  */
-uint8_t system_clock_from_xtal(uint32_t xtal)
+static uint8_t system_clock_from_xtal(uint32_t xtal)
 {
     uint32_t timeout = 0U;
     uint32_t stab_flag = 0U;
@@ -392,7 +150,7 @@ uint8_t system_clock_from_xtal(uint32_t xtal)
         .xtal = xtal
     };
 
-    calculate_max_sys_clk(&cfg);
+    system_clock_max(&cfg);
 
     /* pll multiplier */
     RCU_CFG0 = (RCU_CFG0 & ~(RCU_CFG0_PLLSEL | RCU_CFG0_PLLMF | RCU_CFG0_PLLDV)) |
@@ -435,13 +193,6 @@ uint8_t system_clock_from_xtal(uint32_t xtal)
     return CLOCK_OK;
 }
 
-void system_clock_output_enable()
-{
-    RCU_CFG0 = (RCU_CFG0 & ~RCU_CFG0_CKOUTSEL) | RCU_CKOUTSRC_HXTAL;
-    gpio_mode_set(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO_PIN_8);
-    gpio_af_set(GPIOA, GPIO_AF_0, GPIO_PIN_8);
-}
-
 /**
  * @brief Overriding weak function
  * implemented in system_xxxx.c
@@ -451,10 +202,87 @@ void system_clock_config(void)
     //system_clock_72m_irc8m();
     system_clock_from_xtal(HXTAL_VALUE);
 
-    //SystemCoreClockUpdate();
-
-    system_clock_output_enable();
+    board_system_clock_output(OFF);
 }
+
+void delay_ms(uint32_t ms)
+{
+    volatile uint32_t end = ticms + ms;
+    while (ticms < end){ }
+}
+
+uint32_t elapsed_ms(uint32_t start_ms)
+{
+	int32_t delta = get_ms() - start_ms;
+    return (delta < 0) ? -delta : delta;
+}
+
+inline uint32_t get_ms(void)
+{
+    return ticms;
+}
+
+void board_init(void)
+{
+    LED1_PIN_INIT;
+
+    system_clock_config();
+
+	SysTick_Config(SystemCoreClock / 1000);
+
+    rcu_periph_clock_enable(RCU_GPIOA);
+    rcu_periph_clock_enable(RCU_GPIOB);
+    rcu_periph_clock_enable(RCU_GPIOC);
+    rcu_periph_clock_enable(RCU_GPIOF);
+
+    uartbus_a.bus = UART_BUS0;
+    uartbus_a.speed = 115200;
+
+    UART_Init(&uartbus_a);
+
+    uartbus_b.bus = UART_BUS1;
+    uartbus_b.speed = 9600;
+
+    UART_Init(&uartbus_b);
+
+    i2cbus.speed = 100000;
+    i2cbus.bus_num = I2C_BUS3;
+
+    I2C_Init(&i2cbus);
+
+    dac_init();
+    adc_init();
+}
+
+void board_reset(void)
+{
+    NVIC_SystemReset();
+}
+
+void __debugbreak(void)
+{
+    asm volatile
+    (
+        "bkpt #01 \n"
+    );
+}
+
+/**
+ * @brief Enables ouput of system clock to pin
+ *
+ */
+void board_system_clock_output(uint8_t en)
+{
+    if(en){
+        RCU_CFG0 = (RCU_CFG0 & ~RCU_CFG0_CKOUTSEL) | RCU_CKOUTSRC_HXTAL;
+        gpio_mode_set(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO_PIN_8);
+        gpio_af_set(GPIOA, GPIO_AF_0, GPIO_PIN_8);
+    }else{
+        RCU_CFG0 = (RCU_CFG0 & ~RCU_CFG0_CKOUTSEL);
+        gpio_mode_set(GPIOA, GPIO_MODE_INPUT, GPIO_PUPD_NONE, GPIO_PIN_8);
+    }
+}
+
 
 i2cbus_t *board_i2c_get(void)
 {
@@ -471,6 +299,12 @@ uint16_t board_i2c_read(uint8_t dev_addr, uint8_t *data, uint16_t size)
     return I2C_Read(&i2cbus, dev_addr, data, size);
 }
 
+#if ENABLE_IRC8_TRIM
+/**
+ * @brief   Trim internal rc oscillator
+ * @param   adj
+ * @return
+ */
 int32_t board_trim_irc(int8_t adj)
 {
     uint16_t irc8mcal = RCU_CMSIS->CTL0_BIT.IRC8MCALIB;
@@ -515,7 +349,7 @@ int32_t board_trim_irc(int8_t adj)
 exit:
     return irc8mcal << 8 | irc8madj;
 }
-
+#endif
 /**
  * @brief Frequency measurement is archived by
  * cascading timer 2 and timer 14 to obtain a 32bit counter
@@ -639,31 +473,6 @@ void phase_measurement_start(void(*cb)(uint32_t))
 void phase_measurement_stop(void)
 {
     rcu_periph_reset_enable(RCU_TIMER0RST);
-}
-
-void TIMER0_Channel_IRQHandler(void)
-{
-    if(tim0_cb){
-        tim0_cb(TMR0->CH3CV);
-    }
-    TMR0->INTF = 0;
-}
-
-void TIMER2_IRQHandler(void)
-{
-    led_set(LED_PPS, ON);
-    TMR5->CTL0 |= TIMER_CTL0_CEN;
-
-    if(tim2_cb){
-        tim2_cb(TMR14->CH0CV << 16 | TMR2->CH0CV);
-    }
-    TMR2->INTF = 0;
-}
-
-void TIMER5_IRQHandler(void)
-{
-    led_set(LED_PPS, OFF);
-    TMR5->INTF = 0;
 }
 
 void dac_init(void)
@@ -817,7 +626,7 @@ uint8_t pps_init(void)
     }while(!(RCU_BDCTL & RCU_BDCTL_LXTALSTB));
 
     // Enable RTC and use LXTAL
-    RCU_BDCTL |= RCU_BDCTL_RTCEN | RTC_BDCTL_RTCSRC_LXTAL;
+    RCU_BDCTL |= RCU_BDCTL_RTCEN | RCU_BDCTL_RTCSRC_LXTAL;
     // Enable 1Hz output on PC13
     rtc_alter_output_config(RTC_CALIBRATION_1HZ, RTC_ALARM_OUTPUT_PP);
     // Output mode
@@ -845,14 +654,57 @@ void led_set(enum led_tag tag, uint8_t state)
     }
 }
 
-uint32_t vref_get(void)
+uint8_t settings_load(uint8_t *data, uint8_t len)
 {
-    /* ADC software trigger enable */
-    adc_software_trigger_enable(ADC_INSERTED_CHANNEL);
-    /* delay a time in milliseconds */
-    delay_ms(10U);
-
-    uint32_t vref_value = (ADC_IDATA1 * 3300 / 4096);
-    return vref_value;
+    // Read from eeprom
+    return 0;
 }
 
+uint8_t settings_save(const uint8_t *data, uint8_t len)
+{
+    // Write to eeprom
+    return 0;
+}
+
+void pps_out_select(uint8_t in)
+{
+    //TODO
+}
+
+void main_out_select(uint8_t in)
+{
+    //TODO
+}
+
+/**
+ * Interrupt handlers
+ */
+void SysTick_Handler(void)
+{
+    ticms++;
+}
+
+void TIMER0_Channel_IRQHandler(void)
+{
+    if(tim0_cb){
+        tim0_cb(TMR0->CH3CV);
+    }
+    TMR0->INTF = 0;
+}
+
+void TIMER2_IRQHandler(void)
+{
+    led_set(LED_PPS, ON);
+    TMR5->CTL0 |= TIMER_CTL0_CEN;
+
+    if(tim2_cb){
+        tim2_cb(TMR14->CH0CV << 16 | TMR2->CH0CV);
+    }
+    TMR2->INTF = 0;
+}
+
+void TIMER5_IRQHandler(void)
+{
+    led_set(LED_PPS, OFF);
+    TMR5->INTF = 0;
+}

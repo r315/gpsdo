@@ -189,7 +189,7 @@ static int i2cCmd(int argc, char **argv)
 
 static int resetCmd(int argc, char **argv)
 {
-    SW_Reset();
+    board_reset();
     return CLI_OK;
 }
 
@@ -452,16 +452,14 @@ void gpsdo(void)
 
     WDT_Init(3000);
 
-    uint32_t ticks = GetTick();
+    uint32_t ticks = get_ms();
 
     CLI_HandleLine();
 
     while(1){
-        if(ElapsedTicks(ticks) > 500 && print_adc){
+        if(elapsed_ms(ticks) > 500 && print_adc){
             float temp = temperature_get();
-            printf("%d.%d\n", (int)temp, (int)(temp*10)%10);
-            //printf("%lu\n", adc_get(5));
-            ticks = GetTick();
+            ticks = get_ms();
         }
         if(CLI_ReadLine()){
             CLI_HandleLine();
