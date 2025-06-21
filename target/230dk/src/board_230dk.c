@@ -1,7 +1,6 @@
 #include <stdint.h>
 #include <math.h>
 #include "board.h"
-#include "syscalls.h"
 #include "uart.h"
 #include "i2c.h"
 #include "system_gd32e23x.h"
@@ -236,7 +235,6 @@ stdinout_t serial_b_ops = {
     .write = serial_b_write
 };
 
-
 void delay_ms(uint32_t ms)
 {
     volatile uint32_t end = ticms + ms;
@@ -441,7 +439,7 @@ void system_clock_output_enable()
 {
     RCU_CFG0 = (RCU_CFG0 & ~RCU_CFG0_CKOUTSEL) | RCU_CKOUTSRC_HXTAL;
     gpio_mode_set(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO_PIN_8);
-    gpio_af_set(GPIOA, GPIO_AF_0, GPIO_PIN_2);
+    gpio_af_set(GPIOA, GPIO_AF_0, GPIO_PIN_8);
 }
 
 /**
@@ -508,6 +506,17 @@ exit:
     return irc8mcal << 8 | irc8madj;
 }
 
+/**
+ * @brief Frequency measurement is archived by
+ * cascading timer 2 and timer 14 to obtain a 32bit counter
+ * and perform triggered captures.
+ *
+ * The counter counts cycles from input clock and
+ * a second clock (1HZ) triggers the capture, which then
+ * calls a callback with the captured value.
+ * Main application calculates the difference between
+ * captures to get the input frequency.
+ */
 void frequency_measurement_start(void(*cb)(uint32_t))
 {
     tim2_cb = cb;
