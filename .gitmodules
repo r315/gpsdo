@@ -1,3 +1,4 @@
 [submodule "Middlewares/cli-simple"]
 	path = Middlewares/cli-simple
 	url = https://github.com/r315/cli-simple.git
+	branch = main
