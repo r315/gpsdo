@@ -7,7 +7,6 @@
 #include "io_expander.h"
 #include "gd32e23x_def.h"
 
-
 #define HXTAL_MAX_FREQ              32000000UL
 #define HXTAL_MIN_FREQ              4000000UL
 #define SYS_CLK_MAX_FREQ            80000000UL
@@ -32,7 +31,6 @@ struct adc_insert_channel{
     uint8_t channel;
     uint32_t sample_time;
 };
-
 
 static void (*tim2_cb)(uint32_t);
 static void (*tim0_cb)(uint32_t);
@@ -60,8 +58,6 @@ stdinout_t serial_b_ops = {
     .read = serial_b_read,
     .write = serial_b_write
 };
-
-
 
 /**
  * @brief finds the higiest possible system clock
@@ -199,10 +195,9 @@ static uint8_t system_clock_from_xtal(uint32_t xtal)
  */
 void system_clock_config(void)
 {
-    //system_clock_72m_irc8m();
     system_clock_from_xtal(HXTAL_VALUE);
 
-    board_system_clock_output(OFF);
+    system_clock_output(OFF);
 }
 
 void delay_ms(uint32_t ms)
@@ -222,6 +217,10 @@ inline uint32_t get_ms(void)
     return ticms;
 }
 
+/**
+ * @brief
+ * @param
+ */
 void board_init(void)
 {
     LED1_PIN_INIT;
@@ -271,7 +270,7 @@ void __debugbreak(void)
  * @brief Enables ouput of system clock to pin
  *
  */
-void board_system_clock_output(uint8_t en)
+void system_clock_output(uint8_t en)
 {
     if(en){
         RCU_CFG0 = (RCU_CFG0 & ~RCU_CFG0_CKOUTSEL) | RCU_CKOUTSRC_HXTAL;
@@ -282,7 +281,6 @@ void board_system_clock_output(uint8_t en)
         gpio_mode_set(GPIOA, GPIO_MODE_INPUT, GPIO_PUPD_NONE, GPIO_PIN_8);
     }
 }
-
 
 i2cbus_t *board_i2c_get(void)
 {
@@ -360,8 +358,10 @@ exit:
  * calls a callback with the captured value.
  * Main application calculates the difference between
  * captures to get the input frequency.
+ *
+ * @param cb callback for capture with captured value
  */
-void frequency_measurement_start(void(*cb)(uint32_t))
+void counter_start(void(*cb)(uint32_t))
 {
     tim2_cb = cb;
 
@@ -429,14 +429,14 @@ void frequency_measurement_start(void(*cb)(uint32_t))
     NVIC_EnableIRQ(TIMER5_IRQn);
 }
 
-void frequency_measurement_stop(void)
+void counter_stop(void)
 {
     rcu_periph_reset_enable(RCU_TIMER2RST);
     rcu_periph_reset_enable(RCU_TIMER14RST);
     rcu_periph_reset_enable(RCU_TIMER5RST);
 }
 
-void phase_measurement_start(void(*cb)(uint32_t))
+void phase_start(void(*cb)(uint32_t))
 {
     rcu_periph_clock_enable(RCU_TIMER0);
     rcu_periph_reset_enable(RCU_TIMER0RST);
@@ -470,9 +470,14 @@ void phase_measurement_start(void(*cb)(uint32_t))
     NVIC_EnableIRQ(TIMER0_Channel_IRQn);
 }
 
-void phase_measurement_stop(void)
+void phase_stop(void)
 {
     rcu_periph_reset_enable(RCU_TIMER0RST);
+}
+
+void phase_reset(void)
+{
+
 }
 
 void dac_init(void)
@@ -517,6 +522,12 @@ uint32_t dac_voltage_get(void)
     return 0;
 }
 
+/**
+ * @brief Configures 3 insert (preemptive) ADC channels
+ * with software trigger
+ *
+ * @param
+ */
 void adc_init(void)
 {
     struct adc_insert_channel adc_channels[] ={
@@ -584,7 +595,7 @@ uint32_t adc_voltage_get(uint16_t raw)
     return (raw * VDDA) / ADC_RES;
 }
 
-float temperature_get(void)
+float temp_get(void)
 {
     int voltage = adc_voltage_get(adc_get(THM_ADC_CH));
 
@@ -634,6 +645,16 @@ uint8_t pps_init(void)
     return 1;
 }
 
+void pps_select(uint8_t input)
+{
+    //TODO
+}
+
+void output_select(uint8_t input)
+{
+    //TODO
+}
+
 void led_set(enum led_tag tag, uint8_t state)
 {
     static uint8_t color = 1;
@@ -664,16 +685,6 @@ uint8_t settings_save(const uint8_t *data, uint8_t len)
 {
     // Write to eeprom
     return 0;
-}
-
-void pps_out_select(uint8_t in)
-{
-    //TODO
-}
-
-void main_out_select(uint8_t in)
-{
-    //TODO
 }
 
 /**

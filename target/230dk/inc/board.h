@@ -53,7 +53,6 @@ int32_t board_trim_irc(int8_t adj);
 i2cbus_t* board_i2c_get(void);
 uint16_t board_i2c_write(uint8_t dev_addr, const uint8_t *data, uint16_t size);
 uint16_t board_i2c_read(uint8_t dev_addr, uint8_t *data, uint16_t size);
-void board_system_clock_output(uint8_t en);
 void board_reset(void);
 
 /* Time related functions */
@@ -63,12 +62,15 @@ uint32_t get_ms(void);
 
 /* System functions */
 void __debugbreak(void);
+void system_clock_output(uint8_t en);
 
 /* Frequency counter */
-void frequency_measurement_start(void(*cb)(uint32_t));
-void frequency_measurement_stop(void);
-void phase_measurement_start(void(*cb)(uint32_t));
-void phase_measurement_stop(void);
+void counter_start(void(*cb)(uint32_t));
+void counter_stop(void);
+void phase_start(void(*cb)(uint32_t));
+void phase_stop(void);
+void phase_reset(void);
+void phase_select(uint8_t input);
 
 /* DAC */
 void dac_init(void);
@@ -82,21 +84,17 @@ uint16_t adc_get(uint8_t ch);
 uint32_t adc_voltage_get(uint16_t raw);
 
 /* Temperature sensor */
-float temperature_get(void);
+float temp_get(void);
 
 /* PPS Generation */
 uint8_t pps_init(void);
-void pps_out_select(uint8_t in);
+void pps_select(uint8_t input);
 
 /* LED */
 void led_set(enum led_tag, uint8_t state);
 
-/* User Interface */
-
-/* Clock generator */
-
 /* Main ouput */
-void main_out_select(uint8_t in);
+void output_select(uint8_t in);
 
 /* EEPROM */
 uint8_t settings_load(uint8_t *data, uint8_t len);
