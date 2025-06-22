@@ -18,43 +18,6 @@ static uint8_t gps_uart_buf[64];
 static uint16_t gps_uart_wr_idx;
 static uint8_t i2c_buf[64];
 
-static uint8_t parseFreq(uint64_t *out, char *str)
-{
-    uint64_t freq = 0;
-    int32_t value;
-
-    char *ptr = str;
-
-    while(*ptr != '\0') {
-        if(*ptr == '.'){
-            *(ptr++) = '\0';
-            // and truncate decimal part into two digits, assuming
-            // that buffer has at least three more bytes after '.'
-            ptr[2] = '\0';
-            // ensure two digits
-            if(ptr[1] == '\0'){
-                ptr[1] = '0';
-            }
-            break;
-        }
-        ptr++;
-    }
-
-    // Parse integer part
-    CLI_Ia2i(str, &value);
-    freq = value * SI5351_FREQ_MULT;
-    // Parse decimal part
-    value = 0;
-    CLI_Ia2i(ptr, &value);
-    freq += value;
-
-    if(freq > SI5351_MULTISYNTH_DIVBY4_FREQ * SI5351_FREQ_MULT){
-        return 0;
-    }
-
-    *out = freq;
-    return 1;
-}
 
 static void counter_cb(uint32_t counter)
 {
