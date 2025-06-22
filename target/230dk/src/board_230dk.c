@@ -658,19 +658,26 @@ void output_select(uint8_t input)
 
 void led_set(enum led_tag tag, uint8_t state)
 {
-    static uint8_t color = 1;
-
     switch(tag){
         case LED_PPS:
-            if(state){
-                ioexp->clr(&i2cbus, color & 7);
-                color = (color == 7) ? 1 : color + 1;
-            }else
-                ioexp->set(&i2cbus, 7);
+            if(state)
+                ioexp->clr(&i2cbus, (state << LED_PPS_Pos) & LED_PPS_MASK);
+            else
+                ioexp->set(&i2cbus, LED_PPS_MASK);
             break;
 
         case LED_LOCK:
+            if(state)
+                ioexp->clr(&i2cbus, (state << LED_LOCK_Pos) & LED_LOCK_MASK);
+            else
+                ioexp->set(&i2cbus, LED_LOCK_MASK);
+            break;
         case LED_ALM:
+            if(state)
+                ioexp->clr(&i2cbus, (state << LED_ALM_Pos) & LED_ALM_MASK);
+            else
+                ioexp->set(&i2cbus, LED_ALM_MASK);
+            break;
         default:
             break;
     }
@@ -706,7 +713,6 @@ void TIMER0_Channel_IRQHandler(void)
 
 void TIMER2_IRQHandler(void)
 {
-    led_set(LED_PPS, ON);
     TMR5->CTL0 |= TIMER_CTL0_CEN;
 
     if(tim2_cb){

@@ -25,8 +25,14 @@ extern "C" {
 #define LED1_ON         gpio_bit_write(GPIOA, GPIO_PIN_8, RESET)
 #define LED1_TOGGLE     gpio_bit_toggle(GPIOA, GPIO_PIN_8)
 
+#define LED_PPS_Pos     0
+#define LED_PPS_MASK    (7 << LED_PPS_Pos)
+#define LED_LOCK_Pos    3
+#define LED_LOCK_MASK   (1 << LED_LOCK_Pos)
+#define LED_ALM_Pos    4
+#define LED_ALM_MASK   (1 << LED_ALM_Pos)
+
 #define DAC_MAX_VAL     0x0FFF      // 12bit DAC
-#define LED_PPS_MASK    (3 << 1)
 
 #define VCC5V0          4420          // OXCO supply
 #define VDDA            3300          // ADC reference voltage in mv

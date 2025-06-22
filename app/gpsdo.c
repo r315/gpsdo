@@ -18,9 +18,15 @@ static uint8_t i2c_buf[64];
 
 static void counter_cb(uint32_t counter)
 {
+    static uint8_t color = 1;
     counts = counter - last_counter;
     last_counter = counter;
-    printf("\2C%ld\3", counts);
+
+    color = (color == 7) ? 1 : color + 1;
+
+    led_set(LED_PPS, color);
+
+    LOG_PRINT("\2C%ld\3", counts);
 }
 
 static uint8_t gps_line_get(void)
