@@ -270,16 +270,17 @@ void __debugbreak(void)
  * @brief Enables ouput of system clock to pin
  *
  */
-void system_clock_output(uint8_t en)
+void system_clock_output(uint8_t src)
 {
-    if(en){
-        RCU_CFG0 = (RCU_CFG0 & ~RCU_CFG0_CKOUTSEL) | RCU_CKOUTSRC_HXTAL;
-        gpio_mode_set(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO_PIN_8);
-        gpio_af_set(GPIOA, GPIO_AF_0, GPIO_PIN_8);
-    }else{
+    if(!src){
         RCU_CFG0 = (RCU_CFG0 & ~RCU_CFG0_CKOUTSEL);
         gpio_mode_set(GPIOA, GPIO_MODE_INPUT, GPIO_PUPD_NONE, GPIO_PIN_8);
+        return;
     }
+
+    RCU_CFG0 = (RCU_CFG0 & ~RCU_CFG0_CKOUTSEL) | (src << 24);
+    gpio_mode_set(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO_PIN_8);
+    gpio_af_set(GPIOA, GPIO_AF_0, GPIO_PIN_8);
 }
 
 i2cbus_t *board_i2c_get(void)

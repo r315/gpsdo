@@ -363,6 +363,25 @@ static int oscCmd(int argc, char **argv)
     return CLI_OK;
 }
 
+static int sysCmd(int argc, char **argv)
+{
+    if(CLI_IS_PARM(1, "help")){
+        printf("Usage: sys [args]\n");
+        printf("\tclk <src> sys clock output 0-7\n");
+        return CLI_OK;
+    }
+
+    if(CLI_IS_PARM(1, "clk")){
+        uint32_t src;
+        if(CLI_GET_HINT_PARM(2, src)){
+            system_clock_output(src);
+            return CLI_OK;
+        }
+    }
+
+    return CLI_BAD_PARAM;
+}
+
 cli_command_t cli_cmds [] = {
     {"help", ((int (*)(int, char**))CLI_Commands)},
     {"reset", resetCmd},
@@ -376,7 +395,8 @@ cli_command_t cli_cmds [] = {
 #endif
     {"adc", adcCmd},
     {"pha", phaCmd},
-    {"osc", oscCmd}
+    {"osc", oscCmd},
+    {"sys", sysCmd},
 };
 
 /**

@@ -62,7 +62,7 @@ uint32_t get_ms(void);
 
 /* System functions */
 void __debugbreak(void);
-void system_clock_output(uint8_t en);
+void system_clock_output(uint8_t src);
 
 /* Frequency counter */
 void counter_start(void(*cb)(uint32_t));
