@@ -8,7 +8,12 @@
 #include "clock_gen.h"
 #include "wdt.h"
 
-static uint8_t i2c_buf[64];
+#define SYS_FLAG_LOG_TEMP     (1 << 0)
+#define SYS_FLAG_LOG_VREFINT  (1 << 1)
+
+static uint32_t sys_flags;
+static uint32_t next_tick;
+static uint32_t sys_tick_ms;
 
 static void phase_cb(uint32_t val)
 {
@@ -322,7 +327,10 @@ static int nmeaCmd(int argc, char **argv)
 
 static int adcCmd(int argc, char **argv)
 {
-    gpsdo_print_gps_output(argv[1][0] == '1' ? 1 : 0);
+    adc_acquire_start(TRUE);
+    LOG_INF("TEMP EXT %d", adc_voltage_get(THM_ADC_CH));
+    LOG_INF("TEMP INT %d", adc_voltage_get(TSENSE_ADC_CH));
+    LOG_INF("VREF %d", adc_voltage_get(VREFINT_ADC_CH));
     return CLI_OK;
 }
 
@@ -367,7 +375,8 @@ static int sysCmd(int argc, char **argv)
 {
     if(CLI_IS_PARM(1, "help")){
         printf("Usage: sys [args]\n");
-        printf("\tclk <src> sys clock output 0-7\n");
+        printf("\tclk <src> sys clock output (0-7)\n");
+        printf("\tlog <temp|vrefint> <0|1>, Logging\n");
         return CLI_OK;
     }
 
@@ -375,6 +384,26 @@ static int sysCmd(int argc, char **argv)
         uint32_t src;
         if(CLI_GET_HINT_PARM(2, src)){
             system_clock_output(src);
+            return CLI_OK;
+        }
+    }
+
+    if(CLI_IS_PARM(1, "log")){
+        if(CLI_IS_PARM(2, "temp")){
+            if(CLI_IS_PARM(3, "1")){
+                sys_flags |= SYS_FLAG_LOG_TEMP;
+            }else{
+                sys_flags &= ~SYS_FLAG_LOG_TEMP;
+            }
+            return CLI_OK;
+        }
+
+        if(CLI_IS_PARM(2, "vrefint")){
+            if(CLI_IS_PARM(3, "1")){
+                sys_flags |= SYS_FLAG_LOG_VREFINT;
+            }else{
+                sys_flags &= ~SYS_FLAG_LOG_VREFINT;
+            }
             return CLI_OK;
         }
     }
@@ -423,11 +452,28 @@ int main(void)
 
     CLI_HandleLine();
 
+    sys_flags = 0;
+    sys_tick_ms = 500;
+
     while(1) {
         gpsdo();
 
         if(CLI_ReadLine()){
             CLI_HandleLine();
+        }
+
+        if(get_ms() > next_tick){
+            if(sys_flags & SYS_FLAG_LOG_TEMP){
+                float temp = temp_get();
+                LOG_INF("Temp %d.%d", (int)temp, (int)(temp*10)%10);
+            }
+
+            if(sys_flags & SYS_FLAG_LOG_VREFINT){
+                LOG_INF("Vrefint %umV", adc_voltage_get(VREFINT_ADC_CH));
+            }
+
+            next_tick = get_ms() + sys_tick_ms;
+            adc_acquire_start(FALSE);
         }
 
         WDT_Reset();

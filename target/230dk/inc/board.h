@@ -45,6 +45,9 @@ extern "C" {
 #define THM_T0          298.15        // 25°C in Kelvin
 #define THM_R0          10000.0       // Resistance at 25°C (10kΩ)
 
+#define TSENSE_ADC_CH   ADC_CHANNEL_16
+#define VREFINT_ADC_CH  ADC_CHANNEL_17
+
 enum led_tag{
     LED_PPS = 0,
     LED_LOCK,
@@ -86,8 +89,9 @@ uint32_t dac_voltage_get(void);
 
 /* ADC */
 void adc_init(void);
-uint16_t adc_get(uint8_t ch);
-uint32_t adc_voltage_get(uint16_t raw);
+uint8_t adc_acquire_start(uint8_t wait);
+uint16_t adc_acquire_get(uint8_t ch);
+uint32_t adc_voltage_get(uint8_t ch);
 
 /* Temperature sensor */
 float temp_get(void);

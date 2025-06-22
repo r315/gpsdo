@@ -26,7 +26,7 @@ struct pll_cfg{
     uint8_t div;
 };
 
-struct adc_insert_channel{
+struct adc_channel{
     uint8_t rank;
     uint8_t channel;
     uint32_t sample_time;
@@ -57,6 +57,12 @@ stdinout_t serial_b_ops = {
     .available = serial_b_available,
     .read = serial_b_read,
     .write = serial_b_write
+};
+
+static const struct adc_channel board_adc_channels[] ={
+    {0U, ADC_CHANNEL_16, ADC_SAMPLETIME_239POINT5}, // internal temperature sensor
+    {1U, ADC_CHANNEL_17, ADC_SAMPLETIME_239POINT5}, // 1.2V internal reference
+    {2U, THM_ADC_CH, ADC_SAMPLETIME_239POINT5},     // external temperature sensor
 };
 
 /**
@@ -524,42 +530,38 @@ uint32_t dac_voltage_get(void)
 }
 
 /**
- * @brief Configures 3 insert (preemptive) ADC channels
+ * @brief Configures inserted (preemptive) ADC channels
  * with software trigger
  *
- * @param
+ * @param channels      Channels
+ * @param nchannels
  */
-void adc_init(void)
+static void adc_ll_init(const struct adc_channel *channels, uint8_t nchannels)
 {
-    struct adc_insert_channel adc_channels[] ={
-        {0U, ADC_CHANNEL_16, ADC_SAMPLETIME_239POINT5},
-        {1U, ADC_CHANNEL_17, ADC_SAMPLETIME_239POINT5},
-        {2U, THM_ADC_CH, ADC_SAMPLETIME_239POINT5},
-    };
-
     rcu_periph_clock_enable(RCU_ADC);
-    rcu_adc_clock_config(RCU_ADCCK_APB2_DIV6);
+    rcu_adc_clock_config(RCU_ADCCK_APB2_DIV6);  // 18MHz clock
 
     /* ADC channel length config */
-    uint8_t nchannels = sizeof(adc_channels) / sizeof(struct adc_insert_channel);
     adc_channel_length_config(ADC_INSERTED_CHANNEL, nchannels);
 
     for(int i = 0; i < nchannels; i++){
         /* ADC channel config */
-        adc_inserted_channel_config(adc_channels[i].rank,
-                                    adc_channels[i].channel,
-                                    adc_channels[i].sample_time);
+        adc_inserted_channel_config(
+            channels[i].rank,
+            channels[i].channel,
+            channels[i].sample_time
+        );
     }
 
     /* ADC trigger config */
     adc_external_trigger_source_config(ADC_INSERTED_CHANNEL, ADC_EXTTRIG_INSERTED_NONE);
+    adc_external_trigger_config(ADC_INSERTED_CHANNEL, ENABLE);
     /* ADC data alignment config */
     adc_data_alignment_config(ADC_DATAALIGN_RIGHT);
     /* ADC SCAN function enable */
     adc_special_function_config(ADC_SCAN_MODE, ENABLE);
     /* ADC temperature and Vrefint enable */
     adc_tempsensor_vrefint_enable();
-    adc_external_trigger_config(ADC_INSERTED_CHANNEL, ENABLE);
     /* enable ADC interface */
     adc_enable();
     delay_ms(1U);
@@ -567,38 +569,60 @@ void adc_init(void)
     adc_calibration_enable();
 }
 
-uint16_t adc_get(uint8_t ch)
+void adc_init(void)
 {
-    uint32_t value = 0;
-
-    /* ADC software trigger enable */
-    adc_software_trigger_enable(ADC_INSERTED_CHANNEL);
-    /* delay a time in milliseconds */
-    delay_ms(10U);
-
-    switch(ch){
-        case THM_ADC_CH:
-            value = ADC_IDATA2;
-            break;
-        case ADC_CHANNEL_16:
-            value = ADC_IDATA0;
-            break;
-        case ADC_CHANNEL_17:
-            value = ADC_IDATA1;
-            break;
-    }
-
-    return value;
+    adc_ll_init(board_adc_channels, 3);
 }
 
-uint32_t adc_voltage_get(uint16_t raw)
+/**
+ * @brief Start ADC acquisition
+ *
+ * @param wait 0: return from function, otherwise Wait for acquisition end.
+ *
+ * @return 1 if started or conversion ended, 0 on timeout while waiting
+ */
+uint8_t adc_acquire_start(uint8_t wait)
 {
-    return (raw * VDDA) / ADC_RES;
+    /* ADC software trigger enable */
+    adc_software_trigger_enable(ADC_INSERTED_CHANNEL);
+    /* wait for conversion */
+    if(wait){
+        uint32_t timeout = 0xFFFF;
+        while (adc_flag_get(ADC_FLAG_EOC) == RESET && timeout) {
+            timeout--;
+        }
+        if (!timeout) {
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
+/**
+ * @brief Get data from previous acquisition
+ *
+ * @param ch ADC channel number 0-9
+ * @return
+ */
+uint16_t adc_acquire_get(uint8_t ch)
+{
+    switch(ch){
+        case THM_ADC_CH: return ADC_IDATA2;
+        case ADC_CHANNEL_16: return ADC_IDATA0;
+        case ADC_CHANNEL_17:return ADC_IDATA1;
+        default: return 0;
+    }
+}
+
+uint32_t adc_voltage_get(uint8_t ch)
+{
+    return (adc_acquire_get(ch) * VDDA) / ADC_RES;
 }
 
 float temp_get(void)
 {
-    int voltage = adc_voltage_get(adc_get(THM_ADC_CH));
+    int voltage = adc_acquire_get(THM_ADC_CH);
 
     if (voltage == 0)
         return -273.15f;

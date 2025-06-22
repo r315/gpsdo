@@ -9,7 +9,7 @@
 
 static uint32_t last_counter;
 static uint32_t counts;
-static uint8_t nmea_output, print_adc;
+static uint8_t nmea_output;
 static uint8_t gps_uart_buf[64];
 static uint16_t gps_uart_wr_idx;
 static uint32_t gpsdo_ticks;
@@ -62,12 +62,6 @@ void gpsdo_init(void)
 
 void gpsdo(void)
 {
-    if(elapsed_ms(gpsdo_ticks) > 500 && print_adc){
-        float temp = temp_get();
-        printf("\2T%d.%d\3", (int)temp, (int)(temp*10)%10);
-        gpsdo_ticks = get_ms();
-    }
-
     if(nmea_output){
         uint8_t len;
         if((len = gps_line_get()) > 0){
