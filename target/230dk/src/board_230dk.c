@@ -275,6 +275,7 @@ void __debugbreak(void)
 /**
  * @brief Enables ouput of system clock to pin
  *
+ * @param src   clock to be output
  */
 void system_clock_output(uint8_t src)
 {
@@ -289,6 +290,12 @@ void system_clock_output(uint8_t src)
     gpio_af_set(GPIOA, GPIO_AF_0, GPIO_PIN_8);
 }
 
+/**
+ * @brief Get i2c bus instance for this board
+ *
+ * @param
+ * @return
+ */
 i2cbus_t *board_i2c_get(void)
 {
     return &i2cbus;
@@ -487,6 +494,11 @@ void phase_reset(void)
 
 }
 
+/**
+ * @brief Initialize PWM signal to be used in DAC
+ *
+ * @param
+ */
 void dac_init(void)
 {
     Timer_TypeL2 *tmr = TMR13;
@@ -509,20 +521,38 @@ void dac_init(void)
     tmr->CTL0 = 1;          // Start Timer
 }
 
-void dac_duty_set(uint16_t duty)
+/**
+ * @brief VDAC Value, this value is applied as
+ * duty of the PWM signal
+ *
+ * @param value
+ */
+void dac_value_set(uint16_t value)
 {
-    if(duty > DAC_MAX_VAL){
+    if(value > DAC_MAX_VAL){
         return;
     }
 
-    TMR13->CH0CV = duty;
+    TMR13->CH0CV = value;
 }
 
-uint16_t dac_duty_get(void)
+/**
+ * @brief Get current dac value (PWM duty)
+ * @param
+ * @return
+ */
+uint16_t dac_value_get(void)
 {
     return TMR13->CH0CV;
 }
 
+/**
+ * @brief Get DAC output voltage.
+ * This should be DAC output read by ADC.
+ *
+ * @param
+ * @return
+ */
 uint32_t dac_voltage_get(void)
 {
     //TODO read adc
@@ -575,7 +605,7 @@ void adc_init(void)
 }
 
 /**
- * @brief Start ADC acquisition
+ * @brief Start ADC acquisition trggered by software
  *
  * @param wait 0: return from function, otherwise Wait for acquisition end.
  *
@@ -588,19 +618,18 @@ uint8_t adc_acquire_start(uint8_t wait)
     /* wait for conversion */
     if(wait){
         uint32_t timeout = 0xFFFF;
-        while (adc_flag_get(ADC_FLAG_EOC) == RESET && timeout) {
-            timeout--;
-        }
-        if (!timeout) {
-            return 0;
-        }
+        do{
+            if (--timeout == 0) {
+                return 0;
+            }
+        }while (adc_flag_get(ADC_FLAG_EOC) == RESET && timeout);
     }
 
     return 1;
 }
 
 /**
- * @brief Get data from previous acquisition
+ * @brief Get raw data from previous acquisition
  *
  * @param ch ADC channel number 0-9
  * @return
@@ -615,11 +644,21 @@ uint16_t adc_acquire_get(uint8_t ch)
     }
 }
 
+/**
+ * @brief Get voltage on analog pin usind ADC
+ *
+ * @param ch ADC channel (0-9)
+ * @return Voltage in mV
+ */
 uint32_t adc_voltage_get(uint8_t ch)
 {
     return (adc_acquire_get(ch) * VDDA) / ADC_RES;
 }
-
+/**
+ * @brief Obtain external temperature using adc and k type thermistor
+ * @param
+ * @return tmeprature in degre C
+ */
 float temp_get(void)
 {
     int voltage = adc_acquire_get(THM_ADC_CH);

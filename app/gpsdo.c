@@ -7,26 +7,24 @@
 #include "logger.h"
 
 
-static uint32_t last_counter;
-static uint32_t counts;
-static uint8_t nmea_output;
+static uint32_t last_count;
+static uint32_t cur_count;
+static uint8_t log_nmea;
 static uint8_t gps_uart_buf[64];
 static uint16_t gps_uart_wr_idx;
 static uint32_t gpsdo_ticks;
-static uint8_t i2c_buf[64];
 
-
-static void counter_cb(uint32_t counter)
+static void counter_cb(uint32_t count)
 {
     static uint8_t color = 1;
-    counts = counter - last_counter;
-    last_counter = counter;
+    cur_count = count - last_count;
+    last_count = count;
 
     color = (color == 7) ? 1 : color + 1;
 
     led_set(LED_PPS, color);
 
-    LOG_PRINT("\2C%ld\3", counts);
+    LOG_PRINT("\2C%ld\3", cur_count);
 }
 
 static uint8_t gps_line_get(void)
@@ -48,21 +46,21 @@ static uint8_t gps_line_get(void)
     return 0;
 }
 
-void gpsdo_print_gps_output(uint8_t on)
+void gpsdo_log_gps_output(uint8_t on)
 {
-    nmea_output = on;
+    log_nmea = on;
 }
 
 void gpsdo_init(void)
 {
     gpsdo_ticks = get_ms();
     gps_uart_wr_idx = 0;
-    nmea_output = 0;
+    log_nmea = 0;
 }
 
 void gpsdo(void)
 {
-    if(nmea_output){
+    if(log_nmea){
         uint8_t len;
         if((len = gps_line_get()) > 0){
             serial_a_ops.write(gps_uart_buf, len);

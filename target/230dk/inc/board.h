@@ -29,8 +29,8 @@ extern "C" {
 #define LED_PPS_MASK    (7 << LED_PPS_Pos)
 #define LED_LOCK_Pos    3
 #define LED_LOCK_MASK   (1 << LED_LOCK_Pos)
-#define LED_ALM_Pos    4
-#define LED_ALM_MASK   (1 << LED_ALM_Pos)
+#define LED_ALM_Pos     4
+#define LED_ALM_MASK    (1 << LED_ALM_Pos)
 
 #define DAC_MAX_VAL     0x0FFF      // 12bit DAC
 
@@ -83,8 +83,8 @@ void phase_select(uint8_t input);
 
 /* DAC */
 void dac_init(void);
-void dac_duty_set(uint16_t duty);
-uint16_t dac_duty_get(void);
+void dac_value_set(uint16_t value);
+uint16_t dac_value_get(void);
 uint32_t dac_voltage_get(void);
 
 /* ADC */

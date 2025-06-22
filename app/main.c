@@ -25,6 +25,7 @@ static int i2cCmd(int argc, char **argv)
     int32_t val;
     uint8_t count;
     uint8_t read = 0;
+    uint8_t i2c_buf[64];
     i2cbus_t *i2c = board_i2c_get();
 
     if(!strcmp("help", argv[1]) || argc == 1){
@@ -32,8 +33,8 @@ static int i2cCmd(int argc, char **argv)
         printf("\tinit,             Initialize i2c bus\n");
         printf("\tscan,             scan i2c bus\n");
         printf("\tslave <addr>,     set slave address (0-7F) for read/write registers\n");
-        printf("\trd [count], Read current location, count (0-255)\n");
-        printf("\trr <reg> [count], Read register, reg (0-ff), count (0-255)\n");
+        printf("\trd [count], Read from current location, count (1-64)\n");
+        printf("\trr <reg> [count], Read register, reg (0-ff), count (1-64)\n");
         printf("\twr <reg> <data>,  Write register, reg (0-ff), data (multiple)\n");
         return CLI_OK;
     }
@@ -140,8 +141,14 @@ static int clearCmd(int argc, char **argv)
     return CLI_OK;
 }
 
-static int counterCmd(int argc, char **argv)
+static int gpsdoCmd(int argc, char **argv)
 {
+    if(CLI_IS_PARM(1, "help")){
+        printf("Usage: gpsdo [args]\n");
+        printf("\tstart, \n");
+        return CLI_OK;
+    }
+
     if(!strcmp("start", argv[1])){
         gpsdo_start();
         return CLI_OK;
@@ -285,7 +292,7 @@ static int dacCmd(int argc, char **argv)
     int32_t val;
 
     if(argc == 1){
-        printf("%d\n", dac_duty_get());
+        printf("%d\n", dac_value_get());
     }
 
     if(!strcmp("help", argv[1])){
@@ -297,12 +304,12 @@ static int dacCmd(int argc, char **argv)
 
     if(!strcmp("duty", argv[1])){
         if(CLI_Ia2i(argv[2], &val)){
-            dac_duty_set(val);
+            dac_value_set(val);
         }
     }
 
     if(!strcmp("trim", argv[1])){
-        val = dac_duty_get();
+        val = dac_value_get();
         char c;
         do{
             printf("%lu    \r", val);
@@ -313,7 +320,7 @@ static int dacCmd(int argc, char **argv)
                 case 'r': val = DAC_MAX_VAL >> 1; break;
                 default: break;
             }
-            dac_duty_set(val);
+            dac_value_set(val);
         }while(c != 'q');
     }
     return CLI_OK;
@@ -321,7 +328,7 @@ static int dacCmd(int argc, char **argv)
 
 static int nmeaCmd(int argc, char **argv)
 {
-    gpsdo_print_gps_output(argv[1][0] == '1' ? 1 : 0);
+    gpsdo_log_gps_output(argv[1][0] == '1' ? 1 : 0);
     return CLI_OK;
 }
 
@@ -416,7 +423,7 @@ cli_command_t cli_cmds [] = {
     {"reset", resetCmd},
     {"clear", clearCmd},
     {"i2c", i2cCmd},
-    {"cnt", counterCmd},
+    {"gpsdo", gpsdoCmd},
     {"nmea", nmeaCmd},
     {"dac", dacCmd},
 #if ENABLE_CLOCK_GEN
