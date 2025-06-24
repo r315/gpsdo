@@ -487,11 +487,48 @@ void phase_start(void(*cb)(uint32_t))
 void phase_stop(void)
 {
     rcu_periph_reset_enable(RCU_TIMER0RST);
+/**
+ * @brief Divides input clock using TIMER2
+ * and outputs resulting clock on PB0
+ * @param div even division
+ */
+void div_start(uint32_t div)
+{
+    rcu_periph_clock_enable(RCU_TIMER2);
+    rcu_periph_reset_enable(RCU_TIMER2RST);
+    rcu_periph_reset_disable(RCU_TIMER2RST);
+
+    // Configure PB2 for TIMER2_ETI
+    gpio_mode_set(GPIOB, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO_PIN_2);
+    gpio_af_set(GPIOB, GPIO_AF_1, GPIO_PIN_2);
+    // Configure PB0 for TIMER2_CH2
+    gpio_mode_set(GPIOB, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO_PIN_0);
+    gpio_af_set(GPIOB, GPIO_AF_1, GPIO_PIN_0);
+
+    TMR2->SMCFG =
+        TIMER_SMCFG_SMC1 |  // Enable external clock mode
+        TIMER_SMCFG_SMC |   // Select external clock mode 0
+        TIMER_SMCFG_TRGS;   // ETIFP as clock source
+
+    TMR2->CHCTL1 =
+        (0 << 0) |          // CH2 as output
+        (6 << 4);           // PWM0 mode
+    TMR2->CHCTL2 =
+        TIMER_CHCTL2_CH2EN; // Enable CH2
+
+    uint16_t rem = div >> 16;
+    TMR2->PSC = rem;
+    TMR2->CAR = (div / (rem + 1)) - 1;
+    TMR2->CH2CV = TMR2->CAR >> 1;
+
+    TMR2->CTL0 |= TIMER_CTL0_CEN;
 }
 
-void phase_reset(void)
+void div_stop(void)
 {
-
+    rcu_periph_reset_enable(RCU_TIMER2RST);
+    // Configure PB0 for TIMER2_CH2
+    gpio_mode_set(GPIOB, GPIO_MODE_INPUT, GPIO_PUPD_NONE, GPIO_PIN_0);
 }
 
 /**

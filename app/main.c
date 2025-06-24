@@ -149,14 +149,22 @@ static int gpsdoCmd(int argc, char **argv)
         return CLI_OK;
     }
 
-    if(!strcmp("start", argv[1])){
+    if(CLI_IS_PARM(1, "start")){
         gpsdo_start();
         return CLI_OK;
     }
 
-    if(!strcmp("stop", argv[1])){
+    if(CLI_IS_PARM(1, "stop")){
         gpsdo_stop();
         return CLI_OK;
+    }
+
+    if(CLI_IS_PARM(1, "div")){
+        int32_t div;
+        if(CLI_GET_INT_PARM(2, div)){
+            div_start(div);
+            return CLI_OK;
+        }
     }
 
     //printf("counter: 0x%08lx\n", last_counter);

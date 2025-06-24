@@ -76,10 +76,8 @@ void system_clock_output(uint8_t src);
 /* Frequency counter */
 void counter_start(void(*cb)(uint32_t));
 void counter_stop(void);
-void phase_start(void(*cb)(uint32_t));
-void phase_stop(void);
-void phase_reset(void);
-void phase_select(uint8_t input);
+void div_start(uint32_t div);
+void div_stop(void);
 
 /* DAC */
 void dac_init(void);
