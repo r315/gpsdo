@@ -76,6 +76,8 @@ void system_clock_output(uint8_t src);
 /* Frequency counter */
 void counter_start(void(*cb)(uint32_t));
 void counter_stop(void);
+void tdc_start(void(*cb)(int32_t));
+void tdc_stop(void);
 void div_start(uint32_t div);
 void div_stop(void);
 

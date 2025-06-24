@@ -15,9 +15,9 @@ static uint32_t sys_flags;
 static uint32_t next_tick;
 static uint32_t sys_tick_ms;
 
-static void phase_cb(uint32_t val)
+static void tdc_cb(int32_t val)
 {
-    printf("\2P%ld\3", val);
+    printf("%ld\n", val);
 }
 
 static int i2cCmd(int argc, char **argv)
@@ -173,15 +173,15 @@ static int gpsdoCmd(int argc, char **argv)
     return CLI_OK;
 }
 
-static int phaCmd(int argc, char **argv)
+static int tdcCmd(int argc, char **argv)
 {
     if(!strcmp("start", argv[1])){
-        phase_start(phase_cb);
+        tdc_start(tdc_cb);
         return CLI_OK;
     }
 
     if(!strcmp("stop", argv[1])){
-        phase_stop();
+        tdc_stop();
         return CLI_OK;
     }
 
@@ -438,7 +438,7 @@ cli_command_t cli_cmds [] = {
     {"pll", pllCmd},
 #endif
     {"adc", adcCmd},
-    {"pha", phaCmd},
+    {"tdc", tdcCmd},
     {"osc", oscCmd},
     {"sys", sysCmd},
 };

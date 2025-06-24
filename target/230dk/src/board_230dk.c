@@ -10,6 +10,7 @@
 #define HXTAL_MAX_FREQ              32000000UL
 #define HXTAL_MIN_FREQ              4000000UL
 #define SYS_CLK_MAX_FREQ            80000000UL
+#define EDGE_DETECTOR_TIMEOUT       50000 /* ms */
 
 enum clock_err{
     CLOCK_OK = 0,
@@ -32,8 +33,8 @@ struct adc_channel{
     uint32_t sample_time;
 };
 
-static void (*tim2_cb)(uint32_t);
-static void (*tim0_cb)(uint32_t);
+static void (*counter_cb)(uint32_t);
+static void (*tdc_cb)(int32_t);
 static volatile uint32_t ticms;
 static serialbus_t uartbus_a, uartbus_b;
 static i2cbus_t i2cbus;
@@ -377,7 +378,7 @@ exit:
  */
 void counter_start(void(*cb)(uint32_t))
 {
-    tim2_cb = cb;
+    counter_cb = cb;
 
     rcu_periph_clock_enable(RCU_TIMER2);
     rcu_periph_clock_enable(RCU_TIMER14);
@@ -435,7 +436,7 @@ void counter_start(void(*cb)(uint32_t))
     rcu_periph_clock_enable(RCU_TIMER5);
     rcu_periph_reset_disable(RCU_TIMER5RST);
 
-    TMR5->CTL0 = TIMER_CTL0_SPM;
+    TMR5->CTL0 = TIMER_CTL0_SPM;    // TODO: Check if Single pulse better
     TMR5->PSC = (rcu_clock_freq_get(CK_APB1) / 10000UL) - 1;
     TMR5->CAR = 1000;  // on for ~100ms
     TMR5->DMAINTEN =
@@ -448,15 +449,31 @@ void counter_stop(void)
     rcu_periph_reset_enable(RCU_TIMER2RST);
     rcu_periph_reset_enable(RCU_TIMER14RST);
     rcu_periph_reset_enable(RCU_TIMER5RST);
+    NVIC_DisableIRQ(TIMER2_IRQn);
+    NVIC_DisableIRQ(TIMER5_IRQn);
 }
 
-void phase_start(void(*cb)(uint32_t))
+/**
+ * @brief Time-to-digital converter, measures the time interval between two events
+ * and converts that duration into a digital value.
+ *
+ * Due to timer limitations, this implementation cannot measure events that are more than 50ms apart.
+ * After each measurement, a callback is called with the time in [us] between the two events.
+ *
+ * The implementation consists in a timer configured to operate in event mode triggered by ETI
+ * and single pulse. Timer is started by a rising edge on ETI (First event) and stops at update event.
+ * The second event triggers a capture at the rising edge of CHx and due to external DFF, the captured
+ * value remains in CHxCV register.
+ *
+ * The callback is invoked on the update even handler and the value of CHxCV is passed as parameter.
+ *
+ * @param cb  Callback to be invoked with measured time in [us].
+ */
+void tdc_start(void(*cb)(int32_t))
 {
     rcu_periph_clock_enable(RCU_TIMER0);
     rcu_periph_reset_enable(RCU_TIMER0RST);
     rcu_periph_reset_disable(RCU_TIMER0RST);
-
-    tim0_cb = cb;
 
     // Configure PA12 for TIMER0_ETI
     gpio_mode_set(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO_PIN_12);
@@ -466,27 +483,36 @@ void phase_start(void(*cb)(uint32_t))
     gpio_mode_set(GPIOA, GPIO_MODE_AF, GPIO_PUPD_NONE, GPIO_PIN_11);
     gpio_af_set(GPIOA, GPIO_AF_2, GPIO_PIN_11);
 
-    uint32_t tmr0_clk = rcu_clock_freq_get(CK_APB2);
+    // Configure PA15 for DFF reset
+    gpio_mode_set(GPIOA, GPIO_MODE_OUTPUT, GPIO_PUPD_NONE, GPIO_PIN_15);
+    gpio_bit_set(GPIOA, GPIO_PIN_15);
 
-    TMR0->PSC = tmr0_clk / 1000000UL;      // Count us
-    TMR0->CAR = 5000;                      // 5ms max
+    tdc_cb = cb;
+
+    TMR0->PSC = rcu_clock_freq_get(CK_APB2) / 1000000UL - 1;      // Count us
+    TMR0->CAR = EDGE_DETECTOR_TIMEOUT;      // 50ms between resets
     TMR0->SMCFG =
-        TIMER_SLAVE_MODE_EVENT |           // Enable timer on event
-        TIMER_SMCFG_TRGSEL_ETIFP;          // Trigger event on ETIFP (TIMER0_ETI pin)
+        TIMER_SLAVE_MODE_EVENT |            // Enable timer on event
+        TIMER_SMCFG_TRGSEL_ETIFP;           // Trigger event on ETIFP (TIMER0_ETI pin)
 
-    TMR0->CHCTL1 = (1 << 8);               // CH3 Input capture
-    TMR0->CHCTL2 = TIMER_CHCTL2_CH3EN;     // Enable CH3
+    TMR0->CHCTL1 = (1 << 8);                // CH3 Input capture
+    TMR0->CHCTL2 = TIMER_CHCTL2_CH3EN;      // Enable CH3
 
-    TMR0->DMAINTEN = TIMER_DMAINTEN_CH3IE; // Enable interrupt
+    TMR0->DMAINTEN = TIMER_DMAINTEN_UPIE;
+                     //TIMER_DMAINTEN_CH3IE;
+    TMR0->CTL0 = TIMER_CTL0_SPM;            // Single pulse ensures that timer starts at rising edge of first clock
 
-    TMR0->CTL0 = TIMER_CTL0_SPM;           // Single pulse
-
-    NVIC_EnableIRQ(TIMER0_Channel_IRQn);
+    //NVIC_EnableIRQ(TIMER0_Channel_IRQn);    // Interrupt for passing measured value
+    NVIC_EnableIRQ(TIMER0_BRK_UP_TRG_COM_IRQn); // Interrupt for reseting external DFF's
 }
 
-void phase_stop(void)
+void tdc_stop(void)
 {
     rcu_periph_reset_enable(RCU_TIMER0RST);
+    //NVIC_DisableIRQ(TIMER0_Channel_IRQn);
+    NVIC_DisableIRQ(TIMER0_BRK_UP_TRG_COM_IRQn);
+}
+
 /**
  * @brief Divides input clock using TIMER2
  * and outputs resulting clock on PB0
@@ -803,22 +829,38 @@ void SysTick_Handler(void)
     ticms++;
 }
 
+void TIMER0_BRK_UP_TRG_COM_IRQHandler(void)
+{
+    gpio_bit_reset(GPIOA, GPIO_PIN_15);
+
+    if(tdc_cb){
+        if(!TMR0->CH3CV){
+            // No second event
+            tdc_cb(gpio_input_bit_get(GPIOA, GPIO_PIN_11) ?
+                EDGE_DETECTOR_TIMEOUT : -EDGE_DETECTOR_TIMEOUT);
+        }else{
+            tdc_cb(TMR0->CH3CV);
+        }
+    }
+
+    TMR0->CH3CV = 0;
+    TMR0->INTF = 0;
+
+    gpio_bit_set(GPIOA, GPIO_PIN_15);
+}
+
 void TIMER0_Channel_IRQHandler(void)
 {
-    if(tim0_cb){
-        tim0_cb(TMR0->CH3CV);
-    }
     TMR0->INTF = 0;
 }
 
 void TIMER2_IRQHandler(void)
 {
-    TMR5->CTL0 |= TIMER_CTL0_CEN;
-
-    if(tim2_cb){
-        tim2_cb(TMR14->CH0CV << 16 | TMR2->CH0CV);
+    if(counter_cb){
+        counter_cb(TMR14->CH0CV << 16 | TMR2->CH0CV);
     }
     TMR2->INTF = 0;
+    TMR5->CTL0 |= TIMER_CTL0_CEN;
 }
 
 void TIMER5_IRQHandler(void)
