@@ -68,14 +68,14 @@ $(DRIVERS_PATH)/uart/uart_gd32e23x.c \
 $(DRIVERS_PATH)/wdt/wdt_gd32e23x.c \
 
 COMPONENT_SOURCES = \
-$(COMPONENT_PATH)/si5351/si5351.c \
+$(COMPONENT_PATH)/clock_gen/si5351/si5351.c \
 $(COMPONENT_PATH)/io_expander/pcf8574.c \
 
 C_SOURCES = \
 $(DRIVER_SOURCES) \
 $(COMPONENT_SOURCES) \
 $(TARGET_PATH)/src/board_230dk.c \
-$(TARGET_PATH)/src/main.c \
+$(TARGET_PATH)/src/app.c \
 $(APP_PATH)/gpsdo.c \
 $(MIDDLEWARE_PATH)/cli-simple/cli_simple.c \
 $(TARGET_PATH)/src/syscalls.c \

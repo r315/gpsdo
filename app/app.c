@@ -427,7 +427,7 @@ static int sysCmd(int argc, char **argv)
 }
 
 cli_command_t cli_cmds [] = {
-    {"help", ((int (*)(int, char**))CLI_Commands)},
+    //{"help", ((int (*)(int, char**))CLI_Commands)},
     {"reset", resetCmd},
     {"clear", clearCmd},
     {"i2c", i2cCmd},
@@ -448,10 +448,8 @@ cli_command_t cli_cmds [] = {
   * @param  none
   * @retval none
   */
-int main(void)
+void app(void)
 {
-    board_init();
-
     CLI_Init("gpsdo >", &serial_a_ops);
     CLI_RegisterCommand(cli_cmds, sizeof(cli_cmds) / sizeof(cli_command_t));
     CLI_Clear();
@@ -497,6 +495,5 @@ int main(void)
 
         WDT_Reset();
     }
-    return 0;
 }
 

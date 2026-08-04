@@ -821,6 +821,15 @@ uint8_t settings_save(const uint8_t *data, uint8_t len)
     return 0;
 }
 
+int main(void)
+{
+    extern void app(void);
+
+    app();
+
+    return 0;
+}
+
 /**
  * Interrupt handlers
  */
