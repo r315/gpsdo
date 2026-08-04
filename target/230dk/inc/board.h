@@ -80,8 +80,8 @@ void board_init(void);
 int32_t board_trim_irc(int8_t adj);
 #endif
 void board_i2c_init(void);
-uint16_t board_i2c_write(uint8_t dev_addr, const uint8_t *data, uint16_t size);
-uint16_t board_i2c_read(uint8_t dev_addr, uint8_t *data, uint16_t size);
+uint16_t i2cWrite(uint8_t dev_addr, const uint8_t *data, uint16_t size);
+uint16_t i2cRead(uint8_t dev_addr, uint8_t *data, uint16_t size);
 void board_reset(void);
 
 /* Time related functions */
@@ -94,8 +94,8 @@ void __debugbreak(void);
 void mco(uint8_t src);
 
 /* Frequency counter */
-void count_start(void(*cb)(uint32_t));
-void count_stop(void);
+void countStart(void(*cb)(uint32_t));
+void countStop(void);
 void tdc_start(void(*cb)(int32_t));
 void tdc_stop(void);
 void tdc_select(uint8_t input);
@@ -103,10 +103,10 @@ void div_start(uint32_t div);
 void div_stop(void);
 
 /* DAC */
-void dac_init(void);
-void dac_value_set(uint16_t value);
-uint16_t dac_value_get(void);
-uint32_t dac_voltage_get(void);
+void dacInit(void);
+void dacValueSet(uint16_t value);
+uint16_t dacValueGet(void);
+uint32_t dacVoltageGet(void);
 
 /* ADC */
 void adc_init(void);
@@ -118,11 +118,10 @@ uint32_t adc_voltage_get(uint8_t ch);
 float temp_get(void);
 
 /* PPS Generation */
-uint8_t pps_init(void);
-void pps_select(uint8_t input);
+void ppsSelect(uint8_t input);
 
 /* LED */
-void led_set(enum led_tag, uint8_t state);
+void ledSet(enum led_tag, uint8_t state);
 
 /* Main ouput */
 void output_select(uint8_t in);

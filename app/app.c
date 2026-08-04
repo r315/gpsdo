@@ -63,7 +63,7 @@ static int i2cCmd(int argc, char **argv)
     if(read){
         if (read == 2){
             if(CLI_Ha2i(argv[2], (uint32_t*)&val)){
-                board_i2c_write(i2c_device_addr, (uint8_t*)&val, 1);
+                i2cWrite(i2c_device_addr, (uint8_t*)&val, 1);
                 val = 3; // next parameter
             }else{
                 return CLI_BAD_PARAM;
@@ -74,7 +74,7 @@ static int i2cCmd(int argc, char **argv)
 
         count = CLI_Ia2i(argv[val], &val) ? val : 1;
 
-        if(board_i2c_read(i2c_device_addr, i2c_buf, count) > 0){
+        if(i2cRead(i2c_device_addr, i2c_buf, count) > 0){
             for(uint8_t i = 0; i < count; i ++){
                 if( (i & 15) == 0) {
                     if(i == (count - 1)){
@@ -97,7 +97,7 @@ static int i2cCmd(int argc, char **argv)
             i2c_buf[0] = val;
             if(CLI_Ha2i(argv[3], (uint32_t*)&val)){
                 i2c_buf[1] = val;
-                board_i2c_write(i2c_device_addr, i2c_buf, 2);
+                i2cWrite(i2c_device_addr, i2c_buf, 2);
             }
         }
         return CLI_OK;
@@ -114,7 +114,7 @@ static int i2cCmd(int argc, char **argv)
             if( (i & 15) == 0)
                 printf("\n%02X ", i & 0xF0);
 
-            if(board_i2c_read(i, &count, 1) == 0){
+            if(i2cRead(i, &count, 1) == 0){
                 printf("-- ");
             }else{
                 printf("%02X ", i);
@@ -374,15 +374,15 @@ static int oscCmd(int argc, char **argv)
 
     if(argc == 1){
         val = 0;
-        board_i2c_write(0x13, (const uint8_t*)&val, 1);
-        board_i2c_read(0x13, (uint8_t*)&val, sizeof(val));
+        i2cWrite(0x13, (const uint8_t*)&val, 1);
+        i2cRead(0x13, (uint8_t*)&val, sizeof(val));
         printf("0x%lx (%lu)\n", val, val);
     }
 
     if(!strcmp("trim", argv[1])){
         val = 0;
-        board_i2c_write(0x13, (const uint8_t*)&val, 1);
-        board_i2c_read(0x13, (uint8_t*)&val, sizeof(val));
+        i2cWrite(0x13, (const uint8_t*)&val, 1);
+        i2cRead(0x13, (uint8_t*)&val, sizeof(val));
         char c;
         do{
             printf("%lx    \r", val);
@@ -399,7 +399,7 @@ static int oscCmd(int argc, char **argv)
             data[2] = (uint8_t)(val>>8);
             data[3] = (uint8_t)(val>>16);
             data[4] = (uint8_t)(val>>24);
-            board_i2c_write(0x13, data, sizeof(data));
+            i2cWrite(0x13, data, sizeof(data));
         }while(c != 'q');
     }
     return CLI_OK;
@@ -518,12 +518,6 @@ void app(void)
     LOG_INF("gpsdo %s", VERSION);
     LOG_INF("core speed %dMHz", (uint16_t)(SystemCoreClock/1000000UL));
     LOG_PRINT("Type 'help' or '<cmd> help', for more information");
-
-    #ifdef ENABLE_PPS
-    if(!pps_init()){
-        DBG_WRN("Fail to start pps");
-    }
-    #endif
 
     //div_start(10000000);
     #ifdef ENABLE_GPS

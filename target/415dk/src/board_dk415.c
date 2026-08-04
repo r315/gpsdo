@@ -132,7 +132,7 @@ void mco(enum mco src)
     (void)src;
 }
 
-void led_set(enum led_tag tag, uint8_t state)
+void ledSet(enum led_tag tag, uint8_t state)
 {
 #if defined(ENABLE_I2C) && defined(ENABLE_IOEXPANDER)
     switch (tag)
@@ -206,12 +206,12 @@ uint32_t eepromErase(void)
     return NV_Erase();
 }
 #ifdef ENABLE_I2C
-uint16_t board_i2c_write(uint8_t addr, const uint8_t *data, uint16_t size)
+uint16_t i2cWrite(uint8_t addr, const uint8_t *data, uint16_t size)
 {
     return I2C_Write(&i2cbus, addr, data, size);
 }
 
-uint16_t board_i2c_read(uint8_t addr, uint8_t *data, uint16_t size)
+uint16_t i2cRead(uint8_t addr, uint8_t *data, uint16_t size)
 {
     return I2C_Read(&i2cbus, addr, data, size);
 }
@@ -252,14 +252,21 @@ uint8_t spiRead(void)
  *
  * @param cb callback for capture with captured value
  */
-void count_start(void (*cb)(uint32_t))
+void countStart(void (*cb)(uint32_t))
 {
     (void)cb;
 }
 
-void count_stop(void)
+void countStop(void)
 {
 }
+
+#ifdef ENABLE_PPS
+static uint32_t ppsInit(void)
+{
+
+}
+#endif
 
 #ifdef ENABLE_DAC
 /**
@@ -570,6 +577,12 @@ int main(void)
     else
     {
         DBG_BOARD_ERR("I2C Init fail");
+    }
+#endif
+
+#ifdef ENABLE_PPS
+    if(!ppsInit()){
+        DBG_BOARD_ERR("Fail to start pps");
     }
 #endif
 

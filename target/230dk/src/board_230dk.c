@@ -253,7 +253,7 @@ void board_init(void)
 
     board_i2c_init();
 
-    dac_init();
+    dacInit();
     adc_init();
 }
 
@@ -302,12 +302,12 @@ void board_i2c_init(void)
     I2C_Init(&i2cbus);
 }
 
-uint16_t board_i2c_write(uint8_t dev_addr, const uint8_t *data, uint16_t size)
+uint16_t i2cWrite(uint8_t dev_addr, const uint8_t *data, uint16_t size)
 {
     return I2C_Write(&i2cbus, dev_addr, data, size);
 }
 
-uint16_t board_i2c_read(uint8_t dev_addr, uint8_t *data, uint16_t size)
+uint16_t i2cRead(uint8_t dev_addr, uint8_t *data, uint16_t size)
 {
     return I2C_Read(&i2cbus, dev_addr, data, size);
 }
@@ -376,7 +376,7 @@ exit:
  *
  * @param cb callback for capture with captured value
  */
-void count_start(void(*cb)(uint32_t))
+void countStart(void(*cb)(uint32_t))
 {
     counter_cb = cb;
 
@@ -444,7 +444,7 @@ void count_start(void(*cb)(uint32_t))
     NVIC_EnableIRQ(TIMER5_IRQn);
 }
 
-void count_stop(void)
+void countStop(void)
 {
     rcu_periph_reset_enable(RCU_TIMER2RST);
     rcu_periph_reset_enable(RCU_TIMER14RST);
@@ -743,7 +743,7 @@ float temp_get(void)
  * @brief Generates PPS signal from external 32768Hz oscillator
  * using RTC peripheral.
  */
-uint8_t pps_init(void)
+uint32_t ppsInit(void)
 {
     uint8_t retry = 10;
     rcu_periph_clock_enable(RCU_RTC);
@@ -772,7 +772,7 @@ uint8_t pps_init(void)
     return 1;
 }
 
-void pps_select(uint8_t input)
+void ppsSelect(uint8_t input)
 {
     //TODO
 }
@@ -782,7 +782,7 @@ void output_select(uint8_t input)
     //TODO
 }
 
-void led_set(enum led_tag tag, uint8_t state)
+void ledSet(enum led_tag tag, uint8_t state)
 {
     switch(tag){
         case LED_PPS:
@@ -874,6 +874,6 @@ void TIMER2_IRQHandler(void)
 
 void TIMER5_IRQHandler(void)
 {
-    led_set(LED_PPS, OFF);
+    ledSet(LED_PPS, OFF);
     TMR5->INTF = 0;
 }

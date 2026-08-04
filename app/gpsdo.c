@@ -22,7 +22,7 @@ static void counter_cb(uint32_t count)
 
     color = (color == 7) ? 1 : color + 1;
 
-    led_set(LED_PPS, color);
+    ledSet(LED_PPS, color);
 
     LOG_PRINT("\2C%ld\3", cur_count);
 }
@@ -79,10 +79,10 @@ void gps_process(void)
 
 void gpsdo_start(void)
 {
-    count_start(counter_cb);
+    countStart(counter_cb);
 }
 
 void gpsdo_stop(void)
 {
-    count_stop();
+    countStop();
 }
