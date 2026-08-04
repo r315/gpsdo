@@ -7,7 +7,7 @@ RELEASE=no
 #######################################
 # Features
 #######################################
-FEATURES = \
+FEATURES = ENABLE_CLI_COLOR
 
 #######################################
 # paths
@@ -24,6 +24,7 @@ CMSIS_PATH 		=$(LIBEMB_PATH)/CMSIS
 DRIVERS_CORE    =$(CMSIS_PATH)/Device/GigaDevice/GD32E23x
 DRIVERS_SOC     =$(DRIVERS_PATH)/SOC/gd32E23x
 COMPONENT_PATH  =$(LIBEMB_PATH)/component
+RTOS_PATH       =../../Middlewares/FreeRTOS
 
 #######################################
 # Includes
@@ -40,6 +41,10 @@ $(TARGET_PATH)/inc \
 $(APP_PATH) \
 $(COMPONENT_PATH)/si5351 \
 $(COMPONENT_PATH)/io_expander \
+$(RTOS_PATH)/include \
+$(RTOS_PATH)/portable/GCC/ARM_CM23_NTZ/non_secure \
+$(RTOS_PATH)/portable/GCC/ARM_CM23/secure \
+
 
 AS_INCLUDES =\
 
@@ -75,6 +80,15 @@ $(APP_PATH)/gpsdo.c \
 $(MIDDLEWARE_PATH)/cli-simple/cli_simple.c \
 $(TARGET_PATH)/src/syscalls.c \
 
+#$(RTOS_PATH)/tasks.c \
+$(RTOS_PATH)/list.c \
+$(RTOS_PATH)/queue.c \
+$(RTOS_PATH)/timers.c \
+$(RTOS_PATH)/portable/MemMang/heap_4.c \
+$(RTOS_PATH)/portable/GCC/ARM_CM23_NTZ/non_secure/port.c \
+$(RTOS_PATH)/portable/GCC/ARM_CM23_NTZ/non_secure/portasm.c \
+
+
 CPP_SOURCES = \
 
 ASM_SOURCES = \
@@ -90,7 +104,7 @@ DEBUG	 =DEBUG=0
 GIT_TAG :=$(shell git describe --abbrev=0 --tags 2>/dev/null || true)
 VERSION :=VERSION=\"$(GIT_TAG)\"
 else
-OPT   =-Og -g -gdwarf-2 #-Wextra
+OPT   =-O0 -g -gdwarf-2 #-Wextra
 DEBUG    =DEBUG=1
 endif
 

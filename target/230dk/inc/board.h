@@ -54,12 +54,27 @@ enum led_tag{
     LED_ALM
 };
 
+typedef struct boardcfg {
+    uint32_t enabled;       // Bit mask with enabled features
+    uint8_t output_clock;   // Selects 10M outout
+    uint8_t pps_clock;      // Selects PPS output
+    uint8_t sys_clk;        // Clock output select for PA8
+    uint8_t rsvd;
+    uint32_t gps_baud;
+    #if ENABLE_IRC8_TRIM
+    uint32_t irc8_trim;
+    #endif
+    uint16_t dac_duty;
+    uint16_t vdda;
+    uint16_t vcc5v0;
+}boardcfg_t;
+
 /* board low level */
 void board_init(void);
 #if ENABLE_IRC8_TRIM
 int32_t board_trim_irc(int8_t adj);
 #endif
-i2cbus_t* board_i2c_get(void);
+void board_i2c_init(void);
 uint16_t board_i2c_write(uint8_t dev_addr, const uint8_t *data, uint16_t size);
 uint16_t board_i2c_read(uint8_t dev_addr, uint8_t *data, uint16_t size);
 void board_reset(void);
@@ -78,6 +93,7 @@ void counter_start(void(*cb)(uint32_t));
 void counter_stop(void);
 void tdc_start(void(*cb)(int32_t));
 void tdc_stop(void);
+void tdc_select(uint8_t input);
 void div_start(uint32_t div);
 void div_stop(void);
 

@@ -251,10 +251,7 @@ void board_init(void)
 
     UART_Init(&uartbus_b);
 
-    i2cbus.speed = 100000;
-    i2cbus.bus_num = I2C_BUS3;
-
-    I2C_Init(&i2cbus);
+    board_i2c_init();
 
     dac_init();
     adc_init();
@@ -297,9 +294,12 @@ void system_clock_output(uint8_t src)
  * @param
  * @return
  */
-i2cbus_t *board_i2c_get(void)
+void board_i2c_init(void)
 {
-    return &i2cbus;
+    i2cbus.speed = 100000;
+    i2cbus.bus_num = I2C_BUS3;
+
+    I2C_Init(&i2cbus);
 }
 
 uint16_t board_i2c_write(uint8_t dev_addr, const uint8_t *data, uint16_t size)

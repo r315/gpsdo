@@ -14,6 +14,7 @@
 static uint32_t sys_flags;
 static uint32_t next_tick;
 static uint32_t sys_tick_ms;
+static uint8_t i2c_device_addr;
 
 static void tdc_cb(int32_t val)
 {
@@ -26,7 +27,6 @@ static int i2cCmd(int argc, char **argv)
     uint8_t count;
     uint8_t read = 0;
     uint8_t i2c_buf[64];
-    i2cbus_t *i2c = board_i2c_get();
 
     if(!strcmp("help", argv[1]) || argc == 1){
         printf("Usage: i2c <operation>\n");
@@ -40,13 +40,13 @@ static int i2cCmd(int argc, char **argv)
     }
 
     if( !strcmp("init", argv[1])){
-        I2C_Init(i2c);
+        board_i2c_init();
         return CLI_OK;
     }
 
     if(!strcmp("slave", argv[1])){
         if(CLI_Ha2i(argv[2], (uint32_t*)&val)){
-            i2c->addr = val;
+            i2c_device_addr = val;
             return CLI_OK;
         }
     }
@@ -62,7 +62,7 @@ static int i2cCmd(int argc, char **argv)
     if(read){
         if (read == 2){
             if(CLI_Ha2i(argv[2], (uint32_t*)&val)){
-                I2C_Write(i2c, i2c->addr, (uint8_t*)&val, 1);
+                board_i2c_write(i2c_device_addr, (uint8_t*)&val, 1);
                 val = 3; // next parameter
             }else{
                 return CLI_BAD_PARAM;
@@ -73,7 +73,7 @@ static int i2cCmd(int argc, char **argv)
 
         count = CLI_Ia2i(argv[val], &val) ? val : 1;
 
-        if(I2C_Read(i2c, i2c->addr, i2c_buf, count) > 0){
+        if(board_i2c_read(i2c_device_addr, i2c_buf, count) > 0){
             for(uint8_t i = 0; i < count; i ++){
                 if( (i & 15) == 0) {
                     if(i == (count - 1)){
@@ -96,7 +96,7 @@ static int i2cCmd(int argc, char **argv)
             i2c_buf[0] = val;
             if(CLI_Ha2i(argv[3], (uint32_t*)&val)){
                 i2c_buf[1] = val;
-                I2C_Write(i2c, i2c->addr, i2c_buf, 2);
+                board_i2c_write(i2c_device_addr, i2c_buf, 2);
             }
         }
         return CLI_OK;
@@ -113,7 +113,7 @@ static int i2cCmd(int argc, char **argv)
             if( (i & 15) == 0)
                 printf("\n%02X ", i & 0xF0);
 
-            if(I2C_Read(i2c, i, &count, 1) == 0){
+            if(board_i2c_read(i, &count, 1) == 0){
                 printf("-- ");
             }else{
                 printf("%02X ", i);
@@ -458,6 +458,7 @@ int main(void)
 
     LOG_INF("gpsdo %s", VERSION);
     LOG_INF("core speed %dMHz", (uint16_t)(SystemCoreClock/1000000UL));
+    LOG_PRINT("Type 'help' or '<cmd> help', for more information");
 
     if(!pps_init()){
         DBG_WRN("Fail to start pps");
@@ -469,6 +470,9 @@ int main(void)
 
     sys_flags = 0;
     sys_tick_ms = 500;
+
+    div_start(10000000);
+    tdc_start(tdc_cb);
 
     while(1) {
         gpsdo();
