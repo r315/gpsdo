@@ -57,6 +57,9 @@ extern "C" {
 
 #define board_reset             NVIC_SystemReset
 
+#define PWM_TIM                 TMR11
+#define DAC_MAX_VAL             0x0FFF      // 12bit DAC
+
 
 enum led_tag{
     LED_PPS = 0,
@@ -91,6 +94,10 @@ void count_stop(void);
 uint16_t board_i2c_write(uint8_t dev_addr, const uint8_t *data, uint16_t size);
 uint16_t board_i2c_read(uint8_t dev_addr, uint8_t *data, uint16_t size);
 
+#ifdef ENABLE_DAC
+uint16_t dacValueGet(void);
+void dacValueSet(uint16_t);
+#endif
 #ifdef ENABLE_PPS
 uint8_t pps_init(void);
 void pps_select(uint8_t input);

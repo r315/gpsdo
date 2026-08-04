@@ -261,131 +261,44 @@ void count_stop(void)
 {
 }
 
-#ifdef ENABLE_PWM_OUTPUT
+#ifdef ENABLE_DAC
 /**
- * @brief 4 Channel PWM output generation
+ * @brief 1 Channel PWM for DAC
  *
  * @param
  */
-static void pwmOutInit(void)
+static void dacInit(void)
 {
     // TODO: fix clock enable
-    // RCC->APB1EN |= RCC_APB1EN_TMR4EN;
+    RCC->APB2EN |= RCC_APB2EN_TMR11EN;
     // CLOCK_Enable((uint32_t)PWM_TIM, ENABLE);
 
-    PWM_TIM->CTRL1 = TMR_CTRL1_DIR | TMR_CTRL1_ARPEN; // Down count and buffered ARR
+    PWM_TIM->CTRL1 = 0;
     PWM_TIM->DIV = (SystemCoreClock / 1000000) - 1;   // 1MHz clock, counts units of 1us
-#ifdef ENABLE_DC_MOTOR
-    PWM_TIM->CCM1 = (7 << 12); // PWM mode 2 on channels 2 and 3
-    PWM_TIM->CCM2 = (7 << 4);
-    PWM_TIM->CCE = TMR_CCE_C2NEN | TMR_CCE_C3NEN | // Enable complementary outputs
-                   TMR_CCE_C2NP | TMR_CCE_C3NP;    // Invert output
-    PWM_TIM->CC2 = PWM_PULSE_W_DEFAULT;
-    PWM_TIM->CC3 = PWM_PULSE_W_DEFAULT;
-#else
-    PWM_TIM->CCM1 = (7 << 12) | (7 << 4); // PWM mode 2 all channels
-    PWM_TIM->CCM2 = (7 << 12) | (7 << 4);
-    PWM_TIM->CCE = TMR_CCE_C1EN | TMR_CCE_C2EN | // Enable all channels
-                   TMR_CCE_C3EN | TMR_CCE_C4EN |
-                   TMR_CCE_C1P | TMR_CCE_C2P | // Invert them
-                   TMR_CCE_C3P | TMR_CCE_C4P;
-    PWM_TIM->CC1 = PWM_PULSE_W_DEFAULT;
-    PWM_TIM->CC2 = PWM_PULSE_W_DEFAULT;
-    PWM_TIM->CC3 = PWM_PULSE_W_DEFAULT;
-    PWM_TIM->CC4 = PWM_PULSE_W_DEFAULT;
-#endif
-    // Force high state by having CNT > CCRx
-    PWM_TIM->AR = PWM_PERIOD;
-    PWM_TIM->CNT = PWM_PERIOD;
+    PWM_TIM->AR = DAC_MAX_VAL;
+
+    PWM_TIM->CCM1 = (6 << 4);
+    PWM_TIM->CCE = TMR_CCE_C1EN;
+
+    PWM_TIM->CC1 = PWM_TIM->AR >> 2;    // 25%
+
     // Enable timer
     PWM_TIM->CTRL1 = TMR_CTRL1_CNTEN;
-
-    if (PWM_TIM == TMR1)
-    {
-        PWM_TIM->BRKDT = TMR_BRKDT_MOEN; // Main output enable
-    }
-
-#ifdef ENABLE_DC_MOTOR
-    AFIO->MAP |= (1 << 6); // Remap TMR1 to PB0/1
-
-    GPIO_Config(PB_0, GPO_LS_AF);
-    GPIO_Config(PB_1, GPO_LS_AF);
-
-    pwm2.chip = PWM_4;
-    pwm2.frequency = PWM2_FREQUENCY;
-
-    PWM_Init(&pwm2);
-
-    PWM_Enable(&pwm2, 1, PWM_PIN_ON);
-    PWM_Enable(&pwm2, 2, PWM_PIN_ON);
-    PWM_Enable(&pwm2, 3, PWM_PIN_ON);
-    PWM_Enable(&pwm2, 4, PWM_PIN_ON);
-#endif
-
-    GPIO_Config(PB_6, GPO_LS_AF);
-    GPIO_Config(PB_7, GPO_LS_AF);
-    GPIO_Config(PB_8, GPO_LS_AF);
-    GPIO_Config(PB_9, GPO_LS_AF);
 }
 
-void pwmOut(const uint16_t *data, uint8_t nch)
+void dacEnable(uint8_t en)
 {
-    for (int i = 0; i < nch; i++)
-    {
-        pwmChannelSet(data[i], i);
-    }
+    GPIO_Config(PA_7, en ? GPIO_AF_TMR11_CH1 : GPI_FLOAT);
 }
 
-void pwmChannelSet(uint16_t us, uint8_t ch)
+uint16_t dacValueGet()
 {
-    if (ch >= PWM_NCH || us < PWM_PULSE_W_MIN || us > PWM_PULSE_W_MAX)
-    {
-        return;
-    }
-
-#ifdef ENABLE_DC_MOTOR
-    if (ch < 2)
-    {
-        // CH 1 & 2
-        if (us > 1450 && us < 1550)
-        {
-            dcMotorBreak(ch);
-        }
-        else
-        {
-            /**
-             * % = (x - min) * 100 / (max - min)
-             */
-            uint8_t percent, dir;
-            if (us < 1550)
-            {
-                percent = ((1450 - us) * 100) / 400;
-                dir = 0;
-            }
-            else
-            {
-                percent = ((us - 1550) * 100) / 400;
-                dir = 1;
-            }
-
-            dcMotorMove(ch, dir, percent);
-        }
-        return;
-    }
-
-    ch -= 1; // CC2/3
-#endif
-
-    ((uint32_t *)&PWM_TIM->CC1)[ch] = us;
+    return PWM_TIM->CC1;
 }
 
-void pwmFrequencySet(uint32_t freq)
+void dacValueSet(uint16_t val)
 {
-#ifdef ENABLE_DC_MOTOR
-    PWM_FrequencySet(&pwm2, freq);
-#else
-    (void)freq;
-#endif
+    PWM_TIM->CC1 = val & DAC_MAX_VAL;
 }
 #endif
 
@@ -632,21 +545,13 @@ int main(void)
     }
 #endif
 
-#ifdef ENABLE_PWM_OUTPUT
-    pwmOutInit();
-    DBG_BOARD_INF("PWM output started");
+#ifdef ENABLE_DAC
+    dacInit();
+    dacEnable(1);
+    DBG_BOARD_INF("DAC Initialized");
 #endif
 
-#ifdef ENABLE_SBUS_OUTPUT
-    sbusInit();
-    DBG_BOARD_INF("SBUS initialized");
-#endif
-
-#ifdef ENABLE_AUX_ENCODER
-    auxEncoderInit();
-#endif
-
-#ifdef ENABLE_BATTERY_MONITOR
+#ifdef ENABLE_ADC
     adcInit();
 #endif
 

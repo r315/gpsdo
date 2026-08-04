@@ -313,24 +313,24 @@ static int dacCmd(int argc, char **argv)
     int32_t val;
 
     if(argc == 1){
-        printf("%d\n", dac_value_get());
+        printf("%d\n", dacValueGet());
     }
 
     if(!strcmp("help", argv[1])){
         printf("Usage: dac [args]\n");
         printf("\tNo args for current duty value\n");
-        printf("\tduty,   set duty cycle 0-4095\n");
-        printf("\ttrim,   Enter trim mode, +,-,r,q keys\n");
+        printf("\tset    set duty cycle 0-4095\n");
+        printf("\ttrim   Enter trim mode, +,-,r,q keys\n\n");
     }
 
-    if(!strcmp("duty", argv[1])){
+    if(!strcmp("set", argv[1])){
         if(CLI_Ia2i(argv[2], &val)){
-            dac_value_set(val);
+            dacValueSet(val);
         }
     }
 
     if(!strcmp("trim", argv[1])){
-        val = dac_value_get();
+        val = dacValueGet();
         char c;
         do{
             printf("%lu    \r", val);
@@ -341,7 +341,7 @@ static int dacCmd(int argc, char **argv)
                 case 'r': val = DAC_MAX_VAL >> 1; break;
                 default: break;
             }
-            dac_value_set(val);
+            dacValueSet(val);
         }while(c != 'q');
     }
     return CLI_OK;
@@ -491,7 +491,7 @@ cli_command_t cli_cmds [] = {
 #ifdef ENABLE_DAC
     {"dac", dacCmd},
 #endif
-#ifdef ENABLE_DAC
+#ifdef ENABLE_ADC
     {"adc", adcCmd},
 #endif
 #if ENABLE_CLOCK_GEN

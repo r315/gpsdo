@@ -85,7 +85,7 @@ uint16_t board_i2c_read(uint8_t dev_addr, uint8_t *data, uint16_t size);
 void board_reset(void);
 
 /* Time related functions */
-void delay_ms(uint32_t ms);
+void delayMs(uint32_t ms);
 uint32_t elapsed_ms(uint32_t start_ms);
 uint32_t millis(void);
 

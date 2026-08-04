@@ -8,6 +8,7 @@ RELEASE=no
 # Features
 #######################################
 FEATURE_ENABLE +=ENABLE_I2C
+FEATURE_ENABLE +=ENABLE_DAC
 FEATURE_ENABLE +=ENABLE_CLI ENABLE_CLI_COLOR
 #######################################
 # paths

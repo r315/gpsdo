@@ -207,7 +207,7 @@ void system_clock_config(void)
     mco(OFF);
 }
 
-void delay_ms(uint32_t ms)
+void delayMs(uint32_t ms)
 {
     volatile uint32_t end = ticms + ms;
     while (ticms < end){ }
@@ -562,7 +562,7 @@ void div_stop(void)
  *
  * @param
  */
-void dac_init(void)
+void dacInit(void)
 {
     Timer_TypeL2 *tmr = TMR13;
 
@@ -590,7 +590,7 @@ void dac_init(void)
  *
  * @param value
  */
-void dac_value_set(uint16_t value)
+void dacValueSet(uint16_t value)
 {
     if(value > DAC_MAX_VAL){
         return;
@@ -604,7 +604,7 @@ void dac_value_set(uint16_t value)
  * @param
  * @return
  */
-uint16_t dac_value_get(void)
+uint16_t dacValueGet(void)
 {
     return TMR13->CH0CV;
 }
@@ -657,7 +657,7 @@ static void adc_ll_init(const struct adc_channel *channels, uint8_t nchannels)
     adc_tempsensor_vrefint_enable();
     /* enable ADC interface */
     adc_enable();
-    delay_ms(1U);
+    delayMs(1U);
     /* ADC calibration and reset calibration */
     adc_calibration_enable();
 }
@@ -757,7 +757,7 @@ uint8_t pps_init(void)
     RCU_BDCTL |= RCU_BDCTL_LXTALEN;
 
     do{
-        delay_ms(50);
+        delayMs(50);
         if(!(--retry)){
             return 0;
         }

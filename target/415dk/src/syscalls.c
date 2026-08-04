@@ -15,7 +15,17 @@ __attribute__((weak)) int _write(int file, char *ptr, int len) {
 	return uart1_write(ptr, len);;
 }
 
-__attribute__((weak)) int _read(int file, char *ptr, int len) {(void)file; (void)ptr; (void)len; return 0; }
+__attribute__((weak)) int _read(int file, char *ptr, int len) {
+    extern int uart1_read(char *buf, int len);
+    extern int uart1_available(void);
+    if(file == 0){
+        while(uart1_available() == 0);
+        uart1_read(ptr, 1);
+        return 1;
+    }
+    return uart1_read(ptr, len);
+}
+
 int _getpid(void) { return 1; }
 int _kill(int pid, int sig){(void)pid; (void)sig; errno = EINVAL; return -1; }
 int _close(int file) {(void)file; return -1;}
