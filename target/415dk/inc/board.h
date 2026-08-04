@@ -88,6 +88,9 @@ void led_set(enum led_tag tag, uint8_t state);
 void count_start(void(*cb)(uint32_t));
 void count_stop(void);
 
+uint16_t board_i2c_write(uint8_t dev_addr, const uint8_t *data, uint16_t size);
+uint16_t board_i2c_read(uint8_t dev_addr, uint8_t *data, uint16_t size);
+
 #ifdef ENABLE_PPS
 uint8_t pps_init(void);
 void pps_select(uint8_t input);

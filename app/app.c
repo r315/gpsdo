@@ -21,7 +21,7 @@ static uint8_t i2c_device_addr;
 #ifdef ENABLE_CLI
 
 #ifdef ENABLE_TDC
-static void tdc_cb(int32_t val)
+static void tdcHandler(int32_t val)
 {
     printf("%ld\n", val);
 }
@@ -37,12 +37,11 @@ static int i2cCmd(int argc, char **argv)
 
     if(!strcmp("help", argv[1]) || argc == 1){
         printf("Usage: i2c <operation>\n");
-        printf("\tinit,             Initialize i2c bus\n");
-        printf("\tscan,             scan i2c bus\n");
-        printf("\tslave <addr>,     set slave address (0-7F) for read/write registers\n");
-        printf("\trd [count], Read from current location, count (1-64)\n");
-        printf("\trr <reg> [count], Read register, reg (0-ff), count (1-64)\n");
-        printf("\twr <reg> <data>,  Write register, reg (0-ff), data (multiple)\n");
+        printf("\tscan              scan i2c bus\n");
+        printf("\tslave <addr>      set slave address (0-7F) for read/write registers\n");
+        printf("\trd [count]        Read from current location, count (1-64)\n");
+        printf("\trr <reg> [count]  Read register, reg (0-ff), count (1-64)\n");
+        printf("\twr <reg> <data>   Write register, reg (0-ff), data (multiple)\n");
         return CLI_OK;
     }
 
@@ -156,6 +155,7 @@ static int gpsdoCmd(int argc, char **argv)
         return CLI_OK;
     }
 
+#ifdef ENABLE_GPS
     if(CLI_IS_PARM(1, "start")){
         gpsdo_start();
         return CLI_OK;
@@ -165,6 +165,7 @@ static int gpsdoCmd(int argc, char **argv)
         gpsdo_stop();
         return CLI_OK;
     }
+#endif
 /*
 if(CLI_IS_PARM(1, "div")){
     int32_t div;
@@ -185,7 +186,7 @@ if(CLI_IS_PARM(1, "div")){
 static int tdcCmd(int argc, char **argv)
 {
     if(!strcmp("start", argv[1])){
-        tdc_start(tdc_cb);
+        tdc_start(tdcHandler);
         return CLI_OK;
     }
 
@@ -347,12 +348,15 @@ static int dacCmd(int argc, char **argv)
 }
 #endif
 
-static int nmeaCmd(int argc, char **argv)
+#ifdef ENABLE_GPS
+static int gpsCmd(int argc, char **argv)
 {
     (void)argc;(void)argv;
     gpsdo_log_gps_output(argv[1][0] == '1' ? 1 : 0);
     return CLI_OK;
 }
+#endif
+
 #ifdef ENABLE_ADC
 static int adcCmd(int argc, char **argv)
 {
@@ -442,15 +446,48 @@ static int sysCmd(int argc, char **argv)
     return CLI_BAD_PARAM;
 }
 
+static int helpCmd(int argc, char **argv)
+{
+    (void)argc; (void)argv;
+    printf("\nBase commands:\n");
+    printf("  reset   system reset\n");
+    printf("  clear   clear window\n");
+    printf("  sys     system control\n");
+
+    printf("\nFeature commands:\n");
+#ifdef ENABLE_I2C
+    printf("  i2c     i2c subsystem\n");
+#endif
+#ifdef ENABLE_DAC
+    printf("  dac     dac subsystem\n");
+#endif
+#ifdef ENABLE_ADC
+    printf("  adc     adc subsystem\n");
+#endif
+#ifdef ENABLE_CLK
+    printf("  clk     clock output\n");
+#endif
+#ifdef ENABLE_GPS
+    printf("  gps     gps subsystem\n");
+#endif
+
+    putchar('\n');
+
+    return CLI_OK;
+}
+
 cli_command_t cli_cmds [] = {
-    //{"help", ((int (*)(int, char**))CLI_Commands)},
+    {"help", helpCmd},
     {"reset", resetCmd},
     {"clear", clearCmd},
+    {"sys", sysCmd},
+    {"gpsdo", gpsdoCmd},
 #ifdef ENABLE_I2C
     {"i2c", i2cCmd},
 #endif
-    {"gpsdo", gpsdoCmd},
-    {"nmea", nmeaCmd},
+#ifdef ENABLE_GPS
+    {"gps", gpsCmd},
+#endif
 #ifdef ENABLE_DAC
     {"dac", dacCmd},
 #endif
@@ -463,10 +500,8 @@ cli_command_t cli_cmds [] = {
 #ifdef ENABLE_TDC
     {"tdc", tdcCmd},
 #endif
-    //{"osc", oscCmd},
-    {"sys", sysCmd},
 };
-#endif
+#endif /* ENABLE_CLI */
 /**
   * @brief  main function.
   * @param  none
@@ -490,7 +525,10 @@ void app(void)
     }
     #endif
 
-    WDT_Init(3000);
+    //div_start(10000000);
+    #ifdef ENABLE_GPS
+    gps_init(&gps_serial);
+    #endif
 
     #ifdef ENABLE_CLI
     CLI_HandleLine();
@@ -499,12 +537,13 @@ void app(void)
     sys_flags = 0;
     sys_tick_ms = 500;
 
-    //div_start(10000000);
-    //tdc_start(tdc_cb);
-    gps_init(&gps_serial);
+    WDT_Init(3000);
 
     while(1) {
+        #ifdef ENABLE_GPS
         gps_process();
+        #endif
+
         #ifdef ENABLE_CLI
         if(CLI_ReadLine()){
             CLI_HandleLine();

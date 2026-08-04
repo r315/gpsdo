@@ -1,7 +1,7 @@
 BUILD_DIR  	:=$(CURDIR)/build
 APP_DIR 	:=$(CURDIR)/app
 
-all: dk230
+all: dk230 dk415
 
 norule:
 	@echo "specify board"

@@ -16,13 +16,13 @@
 #define DBG_BOARD_INF(...) DBG_INF(DBG_TAG __VA_ARGS__)
 #define DBG_BOARD_WRN(...) DBG_WRN(DBG_TAG __VA_ARGS__)
 #define DBG_BOARD_ERR(...) DBG_ERR(DBG_TAG __VA_ARGS__)
+#define DBG_BOARD_PRINT(...) DBG_PRINT(__VA_ARGS__)
 #else
 #define DBG_BOARD_INF(...)
 #define DBG_BOARD_WRN(...)
 #define DBG_BOARD_ERR(...)
+#define DBG_BOARD_PRINT(...)
 #endif
-
-// enum { DISABLE = 0, ENABLE };
 
 typedef struct adc
 {
@@ -206,12 +206,14 @@ uint32_t eepromErase(void)
     return NV_Erase();
 }
 #ifdef ENABLE_I2C
-uint16_t board_i2c_write(uint8_t dev_addr, const uint8_t *data, uint16_t size)
+uint16_t board_i2c_write(uint8_t addr, const uint8_t *data, uint16_t size)
 {
+    return I2C_Write(&i2cbus, addr, data, size);
 }
 
-uint16_t board_i2c_read(uint8_t dev_addr, uint8_t *data, uint16_t size)
+uint16_t board_i2c_read(uint8_t addr, uint8_t *data, uint16_t size)
 {
+    return I2C_Read(&i2cbus, addr, data, size);
 }
 #endif
 #ifdef ENABLE_SPI
@@ -651,8 +653,8 @@ int main(void)
 #ifdef ENABLE_I2C
     i2cbus.addr = 0;
     i2cbus.speed = 100;
-    i2cbus.bus_num = I2C_BUS1;
-    i2cbus.cfg = I2C_CFG_DMA;
+    i2cbus.bus_num = I2C_BUS3;
+    i2cbus.cfg = I2C_CFG_DMA | I2C_CFG_PINS;
 
     if (I2C_Init(&i2cbus) == I2C_SUCCESS)
     {
@@ -679,7 +681,7 @@ int main(void)
     {
         uint8_t reset = RCC->CTRLSTS >> 24;
         RCC->CTRLSTS = RCC_CTRLSTS_RSTFC;
-        DBG_BOARD_WRN("Reset reason: 0x%x", reset);
+        DBG_BOARD_WRN("Reset reason: 0x%x ", reset);
     }
 
     extern void app(void);
