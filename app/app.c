@@ -121,7 +121,7 @@ static int i2cCmd(int argc, char **argv)
                 printf("%02X ", i);
             }
 
-            delay_ms(1);
+            delayMs(1);
         }
         putchar('\n');
 
