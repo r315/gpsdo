@@ -14,13 +14,17 @@
 static uint32_t sys_flags;
 static uint32_t next_tick;
 static uint32_t sys_tick_ms;
+#ifdef ENABLE_I2C
 static uint8_t i2c_device_addr;
+#endif
 
+#ifdef ENABLE_CLI
 static void tdc_cb(int32_t val)
 {
     printf("%ld\n", val);
 }
 
+#ifdef ENABLE_I2C
 static int i2cCmd(int argc, char **argv)
 {
     int32_t val;
@@ -36,11 +40,6 @@ static int i2cCmd(int argc, char **argv)
         printf("\trd [count], Read from current location, count (1-64)\n");
         printf("\trr <reg> [count], Read register, reg (0-ff), count (1-64)\n");
         printf("\twr <reg> <data>,  Write register, reg (0-ff), data (multiple)\n");
-        return CLI_OK;
-    }
-
-    if( !strcmp("init", argv[1])){
-        board_i2c_init();
         return CLI_OK;
     }
 
@@ -128,6 +127,7 @@ static int i2cCmd(int argc, char **argv)
 
     return CLI_BAD_PARAM;
 }
+#endif
 
 static int resetCmd(int argc, char **argv)
 {
@@ -348,7 +348,7 @@ static int adcCmd(int argc, char **argv)
     LOG_INF("VREF %d", adc_voltage_get(VREFINT_ADC_CH));
     return CLI_OK;
 }
-
+#if 0
 static int oscCmd(int argc, char **argv)
 {
     uint32_t val;
@@ -385,7 +385,7 @@ static int oscCmd(int argc, char **argv)
     }
     return CLI_OK;
 }
-
+#endif
 static int sysCmd(int argc, char **argv)
 {
     if(CLI_IS_PARM(1, "help")){
@@ -430,7 +430,9 @@ cli_command_t cli_cmds [] = {
     //{"help", ((int (*)(int, char**))CLI_Commands)},
     {"reset", resetCmd},
     {"clear", clearCmd},
+#ifdef ENABLE_I2C
     {"i2c", i2cCmd},
+#endif
     {"gpsdo", gpsdoCmd},
     {"nmea", nmeaCmd},
     {"dac", dacCmd},
@@ -439,10 +441,10 @@ cli_command_t cli_cmds [] = {
 #endif
     {"adc", adcCmd},
     {"tdc", tdcCmd},
-    {"osc", oscCmd},
+    //{"osc", oscCmd},
     {"sys", sysCmd},
 };
-
+#endif
 /**
   * @brief  main function.
   * @param  none
@@ -450,21 +452,27 @@ cli_command_t cli_cmds [] = {
   */
 void app(void)
 {
-    CLI_Init("gpsdo >", &serial_a_ops);
+    #ifdef ENABLE_CLI
+    CLI_Init("gpsdo >", &cli_serial);
     CLI_RegisterCommand(cli_cmds, sizeof(cli_cmds) / sizeof(cli_command_t));
     CLI_Clear();
+    #endif
 
     LOG_INF("gpsdo %s", VERSION);
     LOG_INF("core speed %dMHz", (uint16_t)(SystemCoreClock/1000000UL));
     LOG_PRINT("Type 'help' or '<cmd> help', for more information");
 
+    #ifdef ENABLE_PPS
     if(!pps_init()){
         DBG_WRN("Fail to start pps");
     }
+    #endif
 
     WDT_Init(3000);
 
+    #ifdef ENABLE_CLI
     CLI_HandleLine();
+    #endif
 
     sys_flags = 0;
     sys_tick_ms = 500;
@@ -473,23 +481,26 @@ void app(void)
 
     while(1) {
         gps_process();
-
+        #ifdef ENABLE_CLI
         if(CLI_ReadLine()){
             CLI_HandleLine();
         }
+        #endif
 
         if(millis() > next_tick){
+            #ifdef ENABLE_TERMISTOR
             if(sys_flags & SYS_FLAG_LOG_TEMP){
                 float temp = temp_get();
                 LOG_INF("Temp %d.%d", (int)temp, (int)(temp*10)%10);
             }
+            #endif
 
+            #ifdef ENABLE_ADC
             if(sys_flags & SYS_FLAG_LOG_VREFINT){
                 LOG_INF("Vrefint %umV", adc_voltage_get(VREFINT_ADC_CH));
             }
-
-            next_tick = get_ms() + sys_tick_ms;
             adc_acquire_start(FALSE);
+            #endif
             next_tick = millis() + sys_tick_ms;
         }
 

@@ -7,8 +7,8 @@ RELEASE=no
 #######################################
 # Features
 #######################################
-FEATURES = ENABLE_CLI_COLOR
-
+FEATURE_ENABLE +=ENABLE_I2C
+FEATURE_ENABLE +=ENABLE_CLI ENABLE_CLI_COLOR
 #######################################
 # paths
 #######################################
@@ -111,7 +111,7 @@ endif
 # C defines
 C_DEFS +=\
 $(DEVICE) \
-$(FEATURES) \
+$(FEATURE_ENABLE) \
 $(DEBUG) \
 $(VERSION) \
 FIFO_SIZE=128 \
