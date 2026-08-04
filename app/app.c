@@ -390,15 +390,15 @@ static int sysCmd(int argc, char **argv)
 {
     if(CLI_IS_PARM(1, "help")){
         printf("Usage: sys [args]\n");
-        printf("\tclk <src> sys clock output (0-7)\n");
+        printf("\tmco <src> main clock output (0-7)\n");
         printf("\tlog <temp|vrefint> <0|1>, Logging\n");
         return CLI_OK;
     }
 
-    if(CLI_IS_PARM(1, "clk")){
+    if(CLI_IS_PARM(1, "mco")){
         uint32_t src;
         if(CLI_GET_HINT_PARM(2, src)){
-            system_clock_output(src);
+            mco(src);
             return CLI_OK;
         }
     }
@@ -469,17 +469,16 @@ void app(void)
     sys_flags = 0;
     sys_tick_ms = 500;
 
-    div_start(10000000);
-    tdc_start(tdc_cb);
+    gps_init(&gps_serial);
 
     while(1) {
-        gpsdo();
+        gps_process();
 
         if(CLI_ReadLine()){
             CLI_HandleLine();
         }
 
-        if(get_ms() > next_tick){
+        if(millis() > next_tick){
             if(sys_flags & SYS_FLAG_LOG_TEMP){
                 float temp = temp_get();
                 LOG_INF("Temp %d.%d", (int)temp, (int)(temp*10)%10);
@@ -491,6 +490,7 @@ void app(void)
 
             next_tick = get_ms() + sys_tick_ms;
             adc_acquire_start(FALSE);
+            next_tick = millis() + sys_tick_ms;
         }
 
         WDT_Reset();

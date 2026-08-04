@@ -65,9 +65,9 @@ extern int __io_putchar(int ch) __attribute__((weak));
 extern int __io_getchar(void) __attribute__((weak));
 
 
-extern stdinout_t serial_a_ops;
+extern stdinout_t cli_serial;
 
-static stdinout_t *stdinout_syscalls = &serial_a_ops;
+static stdinout_t *stdinout_syscalls = &cli_serial;
 
 /* Functions */
 void initialise_monitor_handles()

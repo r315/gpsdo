@@ -5,8 +5,10 @@
 #define VERSION "vx.x.x"
 #endif
 
-void gpsdo(void);
-void gpsdo_init(void);
+#include "stdinout.h"
+
+void gps_process(void);
+uint32_t gps_init(stdinout_t *uart);
 void gpsdo_log_gps_output(uint8_t on);
 void gpsdo_start(void);
 void gpsdo_stop(void);

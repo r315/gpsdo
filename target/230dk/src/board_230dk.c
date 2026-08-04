@@ -44,7 +44,7 @@ int serial_a_available(void) { return UART_Available(&uartbus_a); }
 int serial_a_read(char *buf, int len) { return UART_Read(&uartbus_a, buf, len); }
 int serial_a_write(const char *buf, int len) { return UART_Write(&uartbus_a, buf, len); }
 
-stdinout_t serial_a_ops = {
+stdinout_t cli_serial = {
     .available = serial_a_available,
     .read = serial_a_read,
     .write = serial_a_write
@@ -54,7 +54,7 @@ int serial_b_available(void) { return UART_Available(&uartbus_b); }
 int serial_b_read(char *buf, int len) { return UART_Read(&uartbus_b, buf, len); }
 int serial_b_write(const char *buf, int len) { return UART_Write(&uartbus_b, buf, len); }
 
-stdinout_t serial_b_ops = {
+stdinout_t gps_serial = {
     .available = serial_b_available,
     .read = serial_b_read,
     .write = serial_b_write
@@ -204,7 +204,7 @@ void system_clock_config(void)
 {
     system_clock_from_xtal(HXTAL_VALUE);
 
-    system_clock_output(OFF);
+    mco(OFF);
 }
 
 void delay_ms(uint32_t ms)
@@ -215,11 +215,11 @@ void delay_ms(uint32_t ms)
 
 uint32_t elapsed_ms(uint32_t start_ms)
 {
-	int32_t delta = get_ms() - start_ms;
+	int32_t delta = millis() - start_ms;
     return (delta < 0) ? -delta : delta;
 }
 
-inline uint32_t get_ms(void)
+inline uint32_t millis(void)
 {
     return ticms;
 }
@@ -275,7 +275,7 @@ void __debugbreak(void)
  *
  * @param src   clock to be output
  */
-void system_clock_output(uint8_t src)
+void mco(enum mco src)
 {
     if(!src){
         RCU_CFG0 = (RCU_CFG0 & ~RCU_CFG0_CKOUTSEL);
@@ -376,7 +376,7 @@ exit:
  *
  * @param cb callback for capture with captured value
  */
-void counter_start(void(*cb)(uint32_t))
+void count_start(void(*cb)(uint32_t))
 {
     counter_cb = cb;
 
@@ -444,7 +444,7 @@ void counter_start(void(*cb)(uint32_t))
     NVIC_EnableIRQ(TIMER5_IRQn);
 }
 
-void counter_stop(void)
+void count_stop(void)
 {
     rcu_periph_reset_enable(RCU_TIMER2RST);
     rcu_periph_reset_enable(RCU_TIMER14RST);

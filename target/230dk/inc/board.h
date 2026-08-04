@@ -54,6 +54,11 @@ enum led_tag{
     LED_ALM
 };
 
+enum mco {
+    MCO_PLL,
+    MCO_OTHER
+};
+
 typedef struct boardcfg {
     uint32_t enabled;       // Bit mask with enabled features
     uint8_t output_clock;   // Selects 10M outout
@@ -82,15 +87,15 @@ void board_reset(void);
 /* Time related functions */
 void delay_ms(uint32_t ms);
 uint32_t elapsed_ms(uint32_t start_ms);
-uint32_t get_ms(void);
+uint32_t millis(void);
 
 /* System functions */
 void __debugbreak(void);
-void system_clock_output(uint8_t src);
+void mco(uint8_t src);
 
 /* Frequency counter */
-void counter_start(void(*cb)(uint32_t));
-void counter_stop(void);
+void count_start(void(*cb)(uint32_t));
+void count_stop(void);
 void tdc_start(void(*cb)(int32_t));
 void tdc_stop(void);
 void tdc_select(uint8_t input);
@@ -127,8 +132,8 @@ uint8_t settings_load(uint8_t *data, uint8_t len);
 uint8_t settings_save(const uint8_t *data, uint8_t len);
 
 /* Global varaiables */
-extern stdinout_t serial_a_ops;
-extern stdinout_t serial_b_ops;
+extern stdinout_t cli_serial;
+extern stdinout_t gps_serial;
 
 #ifdef __cplusplus
 }

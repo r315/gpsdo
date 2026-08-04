@@ -6,13 +6,13 @@
 #include "board.h"
 #include "logger.h"
 
-
 static uint32_t last_count;
 static uint32_t cur_count;
 static uint8_t log_nmea;
 static uint8_t gps_uart_buf[64];
 static uint16_t gps_uart_wr_idx;
 static uint32_t gpsdo_ticks;
+static stdinout_t *gps_uart;
 
 static void counter_cb(uint32_t count)
 {
@@ -31,8 +31,8 @@ static uint8_t gps_line_get(void)
 {
     uint8_t c, len;
 
-    if(serial_b_ops.available()){
-        serial_b_ops.read(&c, 1);
+    if(gps_uart->available()){
+        gps_uart->read(&c, 1);
         gps_uart_buf[gps_uart_wr_idx++] = c;
         if(c == '\n'){
             // no need for double buffer
@@ -51,29 +51,37 @@ void gpsdo_log_gps_output(uint8_t on)
     log_nmea = on;
 }
 
-void gpsdo_init(void)
+uint32_t gps_init(stdinout_t *uart)
 {
-    gpsdo_ticks = get_ms();
+    if(!uart){
+        return 0;
+    }
+
+    gps_uart = uart;
+
+    gpsdo_ticks = millis();
     gps_uart_wr_idx = 0;
     log_nmea = 0;
+
+    return 1;
 }
 
-void gpsdo(void)
+void gps_process(void)
 {
     if(log_nmea){
         uint8_t len;
         if((len = gps_line_get()) > 0){
-            serial_a_ops.write(gps_uart_buf, len);
+            gps_uart->write(gps_uart_buf, len);
         }
     }
 }
 
 void gpsdo_start(void)
 {
-    counter_start(counter_cb);
+    count_start(counter_cb);
 }
 
 void gpsdo_stop(void)
 {
-    counter_stop();
+    count_stop();
 }
