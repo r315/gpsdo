@@ -19,10 +19,13 @@ static uint8_t i2c_device_addr;
 #endif
 
 #ifdef ENABLE_CLI
+
+#ifdef ENABLE_TDC
 static void tdc_cb(int32_t val)
 {
     printf("%ld\n", val);
 }
+#endif
 
 #ifdef ENABLE_I2C
 static int i2cCmd(int argc, char **argv)
@@ -131,18 +134,22 @@ static int i2cCmd(int argc, char **argv)
 
 static int resetCmd(int argc, char **argv)
 {
+    (void)argc;(void)argv;
     board_reset();
     return CLI_OK;
 }
 
 static int clearCmd(int argc, char **argv)
 {
+    (void)argc;(void)argv;
     CLI_Clear();
     return CLI_OK;
 }
 
 static int gpsdoCmd(int argc, char **argv)
 {
+    (void)argc;
+
     if(CLI_IS_PARM(1, "help")){
         printf("Usage: gpsdo [args]\n");
         printf("\tstart, \n");
@@ -158,14 +165,15 @@ static int gpsdoCmd(int argc, char **argv)
         gpsdo_stop();
         return CLI_OK;
     }
-
-    if(CLI_IS_PARM(1, "div")){
-        int32_t div;
-        if(CLI_GET_INT_PARM(2, div)){
-            div_start(div);
-            return CLI_OK;
-        }
+/*
+if(CLI_IS_PARM(1, "div")){
+    int32_t div;
+    if(CLI_GET_INT_PARM(2, div)){
+        div_start(div);
+        return CLI_OK;
     }
+}
+*/
 
     //printf("counter: 0x%08lx\n", last_counter);
     //printf("count:   0x%08lx\n", counts);
@@ -173,6 +181,7 @@ static int gpsdoCmd(int argc, char **argv)
     return CLI_OK;
 }
 
+#ifdef ENABLE_TDC
 static int tdcCmd(int argc, char **argv)
 {
     if(!strcmp("start", argv[1])){
@@ -187,6 +196,7 @@ static int tdcCmd(int argc, char **argv)
 
     return CLI_OK;
 }
+#endif
 
 #if ENABLE_CLOCK_GEN
 static int clockCmd(int argc, char **argv)
@@ -295,6 +305,8 @@ static int clockCmd(int argc, char **argv)
     return CLI_OK;
 }
 #endif
+
+#ifdef ENABLE_DAC
 static int dacCmd(int argc, char **argv)
 {
     int32_t val;
@@ -333,13 +345,15 @@ static int dacCmd(int argc, char **argv)
     }
     return CLI_OK;
 }
+#endif
 
 static int nmeaCmd(int argc, char **argv)
 {
+    (void)argc;(void)argv;
     gpsdo_log_gps_output(argv[1][0] == '1' ? 1 : 0);
     return CLI_OK;
 }
-
+#ifdef ENABLE_ADC
 static int adcCmd(int argc, char **argv)
 {
     adc_acquire_start(TRUE);
@@ -348,6 +362,7 @@ static int adcCmd(int argc, char **argv)
     LOG_INF("VREF %d", adc_voltage_get(VREFINT_ADC_CH));
     return CLI_OK;
 }
+#endif
 #if 0
 static int oscCmd(int argc, char **argv)
 {
@@ -388,6 +403,7 @@ static int oscCmd(int argc, char **argv)
 #endif
 static int sysCmd(int argc, char **argv)
 {
+    (void)argc;
     if(CLI_IS_PARM(1, "help")){
         printf("Usage: sys [args]\n");
         printf("\tmco <src> main clock output (0-7)\n");
@@ -435,12 +451,18 @@ cli_command_t cli_cmds [] = {
 #endif
     {"gpsdo", gpsdoCmd},
     {"nmea", nmeaCmd},
+#ifdef ENABLE_DAC
     {"dac", dacCmd},
+#endif
+#ifdef ENABLE_DAC
+    {"adc", adcCmd},
+#endif
 #if ENABLE_CLOCK_GEN
     {"pll", pllCmd},
 #endif
-    {"adc", adcCmd},
+#ifdef ENABLE_TDC
     {"tdc", tdcCmd},
+#endif
     //{"osc", oscCmd},
     {"sys", sysCmd},
 };
@@ -477,6 +499,8 @@ void app(void)
     sys_flags = 0;
     sys_tick_ms = 500;
 
+    //div_start(10000000);
+    //tdc_start(tdc_cb);
     gps_init(&gps_serial);
 
     while(1) {

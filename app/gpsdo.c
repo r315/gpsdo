@@ -29,7 +29,8 @@ static void counter_cb(uint32_t count)
 
 static uint8_t gps_line_get(void)
 {
-    uint8_t c, len;
+    uint8_t len;
+    char c;
 
     if(gps_uart->available()){
         gps_uart->read(&c, 1);
@@ -71,7 +72,7 @@ void gps_process(void)
     if(log_nmea){
         uint8_t len;
         if((len = gps_line_get()) > 0){
-            gps_uart->write(gps_uart_buf, len);
+            gps_uart->write((const char*)gps_uart_buf, len);
         }
     }
 }

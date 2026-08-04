@@ -1,5 +1,5 @@
 BUILD_DIR  	:=$(CURDIR)/build
-APP_DIR 	:=$(CURDIR)/App
+APP_DIR 	:=$(CURDIR)/app
 
 all: dk230
 
@@ -16,5 +16,11 @@ dk230:
 
 dk230-program:
 	@"$(MAKE)" -C target/230dk BUILD_DIR=$(BUILD_DIR)/230dk APP_DIR=$(APP_DIR) program
+
+dk415:
+	@"$(MAKE)" -C target/415dk BUILD_DIR=$(BUILD_DIR)/415dk APP_PATH=$(APP_DIR)
+
+dk415-program:
+	@"$(MAKE)" -C target/415dk BUILD_DIR=$(BUILD_DIR)/415dk APP_PATH=$(APP_DIR) program-jlink
 
 .PHONY:
