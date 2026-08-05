@@ -264,7 +264,44 @@ void countStop(void)
 #ifdef ENABLE_PPS
 static uint32_t ppsInit(void)
 {
+    uint8_t retry = 10;
+    CLOCK_Enable(PWR, ENABLE);
+    // Enable write on ERTC
+    PWR->CTRL |= PWR_CTRL_DBP;
+    // Reset to ensure that is stable
+    RCC->BDC |= RCC_BDC_BDRST;
+    RCC->BDC &= ~RCC_BDC_BDRST;
+    // Enable Low speed xtal
+    RCC->BDC |= RCC_BDC_LSEEN;
 
+    do{
+        delayMs(50);
+        if(!(--retry)){
+            return 0;
+        }
+    }while(!(RCC->BDC & RCC_BDC_LSESTBL));
+
+    // Enable RTC and use LXTAL
+    RCC->BDC |= RCC_BDC_ERTCEN | RCC_BDC_ERTCSEL_LSE;
+
+    /* Configure ERTC */
+
+    /* disable the write protection */
+    ERTC->WPR = 0xCA;
+    ERTC->WPR = 0x53;
+
+    ERTC->CTRL &= ~(ERTC_CTRL_CALOE | ERTC_CTRL_OSEL | ERTC_CTRL_OPOL | ERTC_CTRL_CALSEL);
+    ERTC->CTRL |= ERTC_CTRL_CALOE | ERTC_CTRL_CALSEL;
+
+    /* alarm output push pull */
+    ERTC->TPAF |= ERTC_TPAF_ALAOUTTYPE;
+
+    /* enable the write protection */
+    ERTC->WPR = 0;
+
+    // Enable 1Hz output on PC13
+    GPIO_Config(PC_13, GPO_MS_AF);
+    return 1;
 }
 #endif
 
@@ -276,12 +313,10 @@ static uint32_t ppsInit(void)
  */
 static void dacInit(void)
 {
-    // TODO: fix clock enable
-    RCC->APB2EN |= RCC_APB2EN_TMR11EN;
-    // CLOCK_Enable((uint32_t)PWM_TIM, ENABLE);
+    CLOCK_Enable(PWM_TIM, ENABLE);
 
     PWM_TIM->CTRL1 = 0;
-    PWM_TIM->DIV = (SystemCoreClock / 1000000) - 1;   // 1MHz clock, counts units of 1us
+    PWM_TIM->DIV = (CLOCK_Get(CLOCK_CLK4) / 1000000) - 1;   // 1MHz clock, counts units of 1us
     PWM_TIM->AR = DAC_MAX_VAL;
 
     PWM_TIM->CCM1 = (6 << 4);
