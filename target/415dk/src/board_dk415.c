@@ -110,7 +110,7 @@ static void systicksInit(void)
      * for software timers
      */
     systicks = 0;
-    SysTick_Config(SystemCoreClock / 1000);
+    SysTick_Config(CLOCK_Get(CLOCK_CPU) / 1000);
     NVIC_EnableIRQ(SysTick_IRQn);
 }
 
@@ -531,13 +531,11 @@ int main(void)
 #endif
 
     // Configure cpu and bus clock's
-    // SystemInit();
+    SystemConfigClockSrc(RCC_CFG_SYSCLKSEL_HSI);
 
-    SystemConfigClockSrc(0);
-    if (SystemConfigPll(1, HSE_VALUE, 150000000))
+    if (SystemConfigPll(RCC_CFG_PLLRC_HSE, HSE_VALUE, 150000000))
     {
-        CLOCK_Output(0b0110, 0b1001, 1);
-        SystemConfigClockSrc(2);
+        SystemConfigClockSrc(RCC_CFG_SYSCLKSEL_PLL);
         SystemCoreClockUpdate();
     }
 
