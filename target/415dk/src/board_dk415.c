@@ -10,6 +10,7 @@
 #include "pwm.h"
 #include "clock.h"
 #include "io_expander.h"
+#include "io_expander/pcf8574.h"
 
 #ifdef ENABLE_DEBUG_BOARD
 #define DBG_TAG "BOARD : "
@@ -50,8 +51,6 @@ static nvdata_t dk415_nvdata = {
         .write = FLASH_Write,
         .erase = Flash_EraseSector},
     .nvb = {.size = 0, .next = NULL, .data = NULL}};
-
-// static ioexp_t *ioexp = &pcf8574_ioexp;
 
 static serialbus_t uart1;
 static serialbus_t uart2;
@@ -101,6 +100,9 @@ static dmatype_t adcdma;
 static void adcInit(void);
 #endif
 
+#ifdef ENABLE_IOEXPANDER
+static ioexp_t *ioexp = &pcf8574_ioexp;
+#endif
 /**
  * @brief Initialyze system time bases
  * */
