@@ -7,6 +7,7 @@
 #include "cli_simple.h"
 #include "clock_gen.h"
 #include "wdt.h"
+#include "clock.h"
 
 #define SYS_FLAG_LOG_TEMP     (1 << 0)
 #define SYS_FLAG_LOG_VREFINT  (1 << 1)
@@ -407,20 +408,24 @@ static int oscCmd(int argc, char **argv)
 #endif
 static int sysCmd(int argc, char **argv)
 {
-    (void)argc;
-    if(CLI_IS_PARM(1, "help")){
+    if(CLI_IS_PARM(1, "help") || argc == 1){
         printf("Usage: sys [args]\n");
-        printf("\tmco <src> main clock output (0-7)\n");
-        printf("\tlog <temp|vrefint> <0|1>, Logging\n");
+        printf("  log <temp|vrefint> <0|1>     Logging\n");
+        printf("  mco <src> <div>              Main clock output 0-15 0-15\n");
         return CLI_OK;
     }
 
     if(CLI_IS_PARM(1, "mco")){
-        uint32_t src;
-        if(CLI_GET_HINT_PARM(2, src)){
+        int32_t src, div;
+        #ifdef BOARD_DK415
+        if(CLI_GET_INT_PARM(2, src) && CLI_GET_INT_PARM(3, div)){
+            mco(src, div << 4);
+        #else
+        if(CLI_GET_INT_PARM(2, src)){
             mco(src);
-            return CLI_OK;
+        #endif
         }
+        return CLI_OK;
     }
 
     if(CLI_IS_PARM(1, "log")){
@@ -516,7 +521,7 @@ void app(void)
     #endif
 
     LOG_INF("gpsdo %s", VERSION);
-    LOG_INF("core speed %dMHz", (uint16_t)(SystemCoreClock/1000000UL));
+    LOG_INF("core speed %dMHz", (uint16_t)(CLOCK_Get(CLOCK_CPU)/1000000UL));
     LOG_PRINT("Type 'help' or '<cmd> help', for more information");
 
     //div_start(10000000);

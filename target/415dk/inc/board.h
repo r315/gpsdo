@@ -67,9 +67,29 @@ enum led_tag{
     LED_ALM
 };
 
-enum mco {
-    MCO_PLL,
-    MCO_OTHER
+enum mco_src {
+    MCO_NONE = 0,
+    MCO_LICK = 2,
+    MCO_LEXT,
+    MCO_SCLK,
+    MCO_HICK,
+    MCO_HEXT,
+    MCO_PLL_2,
+    MCO_PLL_4,
+    MCO_USB,
+    MCO_ADC
+};
+
+enum mco_div {
+    MCO_DIV_1   = 0,
+    MCO_DIV_2   = (8 << 4),
+    MCO_DIV_4   = (9 << 4),
+    MCO_DIV_8   = (10 << 4),
+    MCO_DIV_16  = (11 << 4),
+    MCO_DIV_64  = (12 << 4),
+    MCO_DIV_128 = (13 << 4),
+    MCO_DIV_256 = (14 << 4),
+    MCO_DIV_512 = (15 << 4)
 };
 
 
@@ -86,7 +106,7 @@ uint32_t eepromWrite(uint16_t offset, const uint8_t *data, uint32_t count);
 uint32_t eepromSave(void);
 uint32_t eepromErase(void);
 
-void mco(enum mco src);
+void mco(enum mco_src src, enum mco_div div);
 void ledSet(enum led_tag tag, uint8_t state);
 void countStart(void(*cb)(uint32_t));
 void countStop(void);

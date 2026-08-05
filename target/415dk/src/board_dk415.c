@@ -127,9 +127,9 @@ void delayMs(uint32_t ms)
     }
 }
 
-void mco(enum mco src)
+void mco(enum mco_src src, enum mco_div div)
 {
-    (void)src;
+    CLOCK_Output(div | src);
 }
 
 void ledSet(enum led_tag tag, uint8_t state)
