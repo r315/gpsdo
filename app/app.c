@@ -148,9 +148,7 @@ static int clearCmd(int argc, char **argv)
 
 static int gpsdoCmd(int argc, char **argv)
 {
-    (void)argc;
-
-    if(CLI_IS_PARM(1, "help")){
+    if(argc == 1 || CLI_IS_PARM(1, "help")){
         printf("Usage: gpsdo [args]\n");
         printf("\tstart, \n");
         return CLI_OK;
@@ -186,6 +184,13 @@ if(CLI_IS_PARM(1, "div")){
 #ifdef ENABLE_TDC
 static int tdcCmd(int argc, char **argv)
 {
+    if(argc == 1 || CLI_IS_PARM(1, "help")){
+        printf("Usage: tdc [args]\n");
+        printf("  start\n");
+        printf("  stop\n");
+        return CLI_OK_LF;
+    }
+
     if(!strcmp("start", argv[1])){
         tdc_start(tdcHandler);
         return CLI_OK;
@@ -361,10 +366,11 @@ static int gpsCmd(int argc, char **argv)
 #ifdef ENABLE_ADC
 static int adcCmd(int argc, char **argv)
 {
-    adc_acquire_start(TRUE);
-    LOG_INF("TEMP EXT %d", adc_voltage_get(THM_ADC_CH));
-    LOG_INF("TEMP INT %d", adc_voltage_get(TSENSE_ADC_CH));
-    LOG_INF("VREF %d", adc_voltage_get(VREFINT_ADC_CH));
+    (void)argc;(void)argv;
+    adcConversionStart(TRUE);
+    printf("TEMP EXT: %ldmV\n", adcVoltageGet(ADC_CHANNEL_TS_EXT));
+    printf("TEMP INT: %ldmV\n", adcVoltageGet(ADC_CHANNEL_TS));
+    printf("VREF    : %ldmV\n", adcVoltageGet(ADC_CHANNEL_INTRV));
     return CLI_OK;
 }
 #endif
@@ -507,6 +513,14 @@ cli_command_t cli_cmds [] = {
 #endif
 };
 #endif /* ENABLE_CLI */
+
+static void titleLine(char start, char mid, char end, uint8_t len)
+{
+    putchar(start);
+    while(len--)
+        putchar(mid);
+    putchar(end);
+}
 /**
   * @brief  main function.
   * @param  none
@@ -517,12 +531,24 @@ void app(void)
     #ifdef ENABLE_CLI
     CLI_Init("gpsdo >", &cli_serial);
     CLI_RegisterCommand(cli_cmds, sizeof(cli_cmds) / sizeof(cli_command_t));
-    CLI_Clear();
     #endif
 
-    LOG_INF("gpsdo %s", VERSION);
-    LOG_INF("core speed %dMHz", (uint16_t)(CLOCK_Get(CLOCK_CPU)/1000000UL));
-    LOG_PRINT("Type 'help' or '<cmd> help', for more information");
+    #ifdef BOARD_DK415
+    sysclock_t clocks;
+    CLOCK_GetAll(&clocks);
+
+    putchar('\n');
+    // using encoding CP437
+    titleLine('\xc9', '\xcd', '\xbb', 40);
+    putchar('\n');
+    printf("\xba gpsdo %s                           \xba\n", VERSION);
+    printf("\xba core speed %dMHz                      \xba\n", (uint16_t)(clocks.cpu/1000000UL));
+    printf("\xba pclk1 %dMHz                            \xba\n", (uint16_t)(clocks.clk1/1000000UL));
+    printf("\xba pclk2 %dMHz                            \xba\n", (uint16_t)(clocks.clk2/1000000UL));
+    printf("\xba adcclk %dMHz                           \xba\n", (uint16_t)(clocks.clk3/1000000UL));
+    titleLine('\xc8', '\xcd', '\xbc', 40);
+    putchar('\n');
+    #endif
 
     //div_start(10000000);
     #ifdef ENABLE_GPS
@@ -559,9 +585,9 @@ void app(void)
 
             #ifdef ENABLE_ADC
             if(sys_flags & SYS_FLAG_LOG_VREFINT){
-                LOG_INF("Vrefint %umV", adc_voltage_get(VREFINT_ADC_CH));
+                LOG_INF("Vrefint %ldmV", adcVoltageGet(ADC_CHANNEL_INTRV));
             }
-            adc_acquire_start(FALSE);
+            adcConversionStart(FALSE);
             #endif
             next_tick = millis() + sys_tick_ms;
         }

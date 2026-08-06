@@ -674,7 +674,7 @@ void adc_init(void)
  *
  * @return 1 if started or conversion ended, 0 on timeout while waiting
  */
-uint8_t adc_acquire_start(uint8_t wait)
+uint8_t adcConversionStart(uint8_t wait)
 {
     /* ADC software trigger enable */
     adc_software_trigger_enable(ADC_INSERTED_CHANNEL);
@@ -697,7 +697,7 @@ uint8_t adc_acquire_start(uint8_t wait)
  * @param ch ADC channel number 0-9
  * @return
  */
-uint16_t adc_acquire_get(uint8_t ch)
+uint16_t adcConversionGet(uint8_t ch)
 {
     switch(ch){
         case THM_ADC_CH: return ADC_IDATA2;
@@ -713,9 +713,9 @@ uint16_t adc_acquire_get(uint8_t ch)
  * @param ch ADC channel (0-9)
  * @return Voltage in mV
  */
-uint32_t adc_voltage_get(uint8_t ch)
+int32_t adcVoltageGet(uint8_t ch)
 {
-    return (adc_acquire_get(ch) * VDDA) / ADC_RES;
+    return (adcConversionGet(ch) * VDDA) / ADC_RES;
 }
 /**
  * @brief Obtain external temperature using adc and k type thermistor
@@ -724,7 +724,7 @@ uint32_t adc_voltage_get(uint8_t ch)
  */
 float temp_get(void)
 {
-    int voltage = adc_acquire_get(THM_ADC_CH);
+    int voltage = adcConversionGet(THM_ADC_CH);
 
     if (voltage == 0)
         return -273.15f;

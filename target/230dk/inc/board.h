@@ -110,9 +110,9 @@ uint32_t dacVoltageGet(void);
 
 /* ADC */
 void adc_init(void);
-uint8_t adc_acquire_start(uint8_t wait);
-uint16_t adc_acquire_get(uint8_t ch);
-uint32_t adc_voltage_get(uint8_t ch);
+uint8_t adcConversionStart(uint8_t wait);
+uint16_t adcConversionGet(uint8_t ch);
+int32_t adcVoltageGet(uint8_t ch);
 
 /* Temperature sensor */
 float temp_get(void);

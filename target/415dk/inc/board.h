@@ -60,6 +60,25 @@ extern "C" {
 #define PWM_TIM                 TMR11
 #define DAC_MAX_VAL             0x0FFF      // 12bit DAC
 
+#define ADC_CHANNEL_5           5
+#define ADC_CHANNEL_16          16
+#define ADC_CHANNEL_17          17
+#define ADC_CHANNEL_TS          ADC_CHANNEL_16
+#define ADC_CHANNEL_INTRV       ADC_CHANNEL_17
+#define ADC_CHANNEL_TS_EXT      ADC_CHANNEL_5
+#define ADC_INTRV_VALUE         1200.0f
+#define ADC_RESOLUTION          4096          // 12-bit ADC resolution
+#define ADC_VDDA                3300          // ADC reference voltage in mv
+
+#define THM_R_FIXED             9840.0        // Pull-up resistor value in ohms
+#define THM_BETA                3950.0        // Beta parameter of the NTC thermistor
+#define THM_T0                  298.15        // 25°C in Kelvin
+#define THM_R0                  10000.0       // Resistance at 25°C (10kΩ)
+
+#define ADC_SEQ_1               ADC_CHANNEL_TS_EXT
+#define ADC_SEQ_2               ADC_CHANNEL_TS
+#define ADC_SEQ_3               ADC_CHANNEL_INTRV
+#define ADC_SEQ_LEN             3
 
 enum led_tag{
     LED_PPS = 0,
@@ -118,6 +137,13 @@ uint16_t i2cRead(uint8_t dev_addr, uint8_t *data, uint16_t size);
 uint16_t dacValueGet(void);
 void dacValueSet(uint16_t);
 #endif
+
+#ifdef ENABLE_ADC
+uint8_t adcConversionStart(uint8_t wait);
+uint16_t adcConversionGet(uint8_t ch);
+int32_t adcVoltageGet(uint8_t ch);
+#endif
+
 #ifdef ENABLE_PPS
 void ppsSelect(uint8_t input);
 #endif

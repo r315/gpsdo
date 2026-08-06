@@ -25,16 +25,16 @@
 #define DBG_BOARD_PRINT(...)
 #endif
 
-typedef struct adc
-{
-    volatile uint16_t status;
-    uint16_t result[2];
+#define ADC_STATUS_RDY (1 << 0)
+#define ADC_STATUS_DIV (1 << 1)
+#define ADC_STATUS_CAL (1 << 2)
+#define ADC_STATUS_RES (1 << 3)
+#define ADC_CR2_EXSEL_SWSTART   (ADC_CTRL2_EXTREN | (7 << 17))
+#define ADC_CR2_JEXSEL_JSWSTART (ADC_CTRL2_JEXTREN | (7 << 12))
+
+typedef struct adc {
     uint32_t calibration_code;
     float resolution;
-    float vdiv_racio;
-    float sense_resistor;
-    uint32_t battery_voltage;
-    uint32_t battery_current;
 } adc_t;
 
 static uint32_t systicks;
@@ -88,16 +88,7 @@ static i2cbus_t i2cbus;
 #endif
 
 #ifdef ENABLE_ADC
-#define ADC_RDY (1 << 0)
-#define ADC_DIV (1 << 1)
-#define ADC_CAL (1 << 2)
-#define ADC_RES (1 << 3)
-#define ADC_CR2_EXTSEL_SWSTART (15 << 17)
-#define ADC_SEQ_LEN 2
-
 static adc_t hadc;
-static dmatype_t adcdma;
-static void adcInit(void);
 #endif
 
 #ifdef ENABLE_IOEXPANDER
@@ -207,6 +198,7 @@ uint32_t eepromErase(void)
 {
     return NV_Erase();
 }
+
 #ifdef ENABLE_I2C
 uint16_t i2cWrite(uint8_t addr, const uint8_t *data, uint16_t size)
 {
@@ -218,6 +210,7 @@ uint16_t i2cRead(uint8_t addr, uint8_t *data, uint16_t size)
     return I2C_Read(&i2cbus, addr, data, size);
 }
 #endif
+
 #ifdef ENABLE_SPI
 /**
  * @brief
@@ -353,109 +346,65 @@ void dacValueSet(uint16_t val)
  * */
 static void adcSampleTime(uint16_t ch, uint16_t time)
 {
-    if (ch > 17)
-    { // Max 17 channels
+    uint32_t shift;
+    __IO uint32_t *smpt;
+
+    if (ch > 17){
         return;
     }
 
-    if (ch < 10)
-    {
-        ADC1->SMPT2 = (ADC1->SMPT2 & (7 << (3 * ch))) | (time << (3 * ch)); // Sample time for channels AN9-0
+    if (ch < 10){
+        smpt = &ADC1->SMPT2;
+    }else{
+        ch = ch % 10;
+        smpt = &ADC1->SMPT1;
     }
-    else
-    {
-        ADC1->SMPT1 = (ADC1->SMPT1 & (7 << (3 * (ch % 10)))) | (time << (3 * (ch % 10))); // Sample time for channels AN17-10
-    }
+
+    shift = (3 * ch);
+    *smpt = (*smpt & ~(7 << shift)) | (time << shift);
 }
 
 /**
  * @brief calibrate ADC and get resolution based
  * on 1.20V internal reference
  * */
-uint32_t adcCalibrate(void)
+static uint32_t adcCalibrate(void)
 {
-    uint32_t bsqr3;
-
     ADC1->CTRL2 |= ADC_CTRL2_CAL; // Perform ADC calibration
 
     while (ADC1->CTRL2 & ADC_CTRL2_CAL)
-    {
         asm volatile("nop");
+    // Get calibration code
+    hadc.calibration_code = ADC1->RDOR;
+
+    /**
+     * Measure resolution by performing conversion
+     * of internal reference using preemptive channels
+     * */
+    ADC1->JSQ = (ADC_CHANNEL_INTRV << 15);
+    // Start conversion
+    ADC1->CTRL2 |= ADC_CTRL2_JSWSTR;
+    while (!(ADC1->STS & ADC_STS_JEC))
+        asm volatile("nop");
+
+    /**
+     * Check if conversion is within range
+     *
+     * VINTRV 1.17V  1.20V  1.23V
+     *
+     * with VCCA = 3.3V
+     * 1450 < ADC < 1530
+     */
+    uint32_t vref_raw = ADC1->JDOR1;
+    if(1530 < vref_raw || 1450 > vref_raw){
+        return 0;
     }
 
-    hadc.calibration_code = ADC1->RDOR;
-    // Set calibration flag
-    hadc.status |= ADC_CAL;
-    // select VREFINT channel for first conversion
-    bsqr3 = ADC1->RSQ3;
-    ADC1->RSQ3 = (HW_VREFINT_CHANNEL << 0);
-    // wake up Vrefint
-    ADC1->CTRL2 |= ADC_CTRL2_TSREF;
-    DelayMs(5);
-    // Start conversion
-    ADC1->CTRL2 |= ADC_CTRL2_SWSTR;
-    while (!(ADC1->STS & ADC_STS_EC))
-    {
-        asm volatile("nop");
-    }
     // Compute resolution
-    hadc.resolution = VREFINT_VALUE / ADC1->RDOR;
-    // power down VREFINT
-    ADC1->CTRL2 &= ~ADC_CTRL2_TSREF;
-    ADC1->RSQ3 = bsqr3;
-    // Set resolution flag
-    hadc.status |= ADC_RES;
+    hadc.resolution = ADC_INTRV_VALUE / vref_raw;
     return 1;
 }
 
-/**
- * @brief Set voltage divider racio, used to measure battery voltage
- *
- * @param r : Racio = R2/(R1+R2)
- * */
-void adcSetVdivRacio(float r)
-{
-    hadc.vdiv_racio = r;
-    hadc.status |= ADC_DIV;
-}
-
-/**
- * @brief Set current sense resistor value for current calculation
- *
- * @param rs : Sense resistor value in ohms
- * */
-void adcSetSenseResistor(float rs)
-{
-    hadc.sense_resistor = rs * ISENSE_GAIN;
-}
-
-/**
- * @brief get current voltage divider racio, used to measure battery voltage
- *
- * @return : R2/(R1+R2)
- * */
-float adcGetVdivRacio(void)
-{
-    return hadc.vdiv_racio;
-}
-
-/**
- * @brief Get current sense resistor value for current calculation
- *
- * @return : Sense resistor value in ohms
- * */
-float adcGetSenseResistor(void)
-{
-    return hadc.sense_resistor / ISENSE_GAIN;
-}
-
-static void adcEocHandler(void)
-{
-    DMA_Cancel(&adcdma);
-    hadc.battery_voltage = (float)(hadc.result[0] * hadc.resolution) / hadc.vdiv_racio;
-    hadc.battery_current = (hadc.result[1] * hadc.resolution) / hadc.sense_resistor;
-    hadc.status |= ADC_RDY;
-}
 
 /**
  * @brief Configure ADC for a HW_VBAT_CHANNEL channel in interrupt mode and initiates a convertion.
@@ -463,61 +412,87 @@ static void adcEocHandler(void)
  *
  * PA0/AN0 is the default channel
  * */
-static void adcInit(void)
+static uint32_t adcInit(void)
 {
-    HW_VBAT_CH_INIT;
+    GPIO_Config(PA_5, GPI_ANALOG);
 
     RCC->APB2EN |= RCC_APB2EN_ADC1EN; // Enable and reset ADC1
     RCC->APB2RST |= RCC_APB2EN_ADC1EN;
     RCC->APB2RST &= ~RCC_APB2EN_ADC1EN;
-
-    ADC1->CTRL2 = ADC_CR2_EXTSEL_SWSTART | // Select software trigger,
-                  ADC_CTRL2_ADON;          // Enable ADC
-    DelayMs(20);
-    // Configure Sample time for the used channles
-    adcSampleTime(HW_VBAT_CHANNEL, 6);    // Sample time, 6 => 71.5 cycles.
-    adcSampleTime(HW_ISENSE_CHANNEL, 6);  // Sample time, 6 => 71.5 cycles.
-    adcSampleTime(HW_VREFINT_CHANNEL, 3); // Sample time 3 => 28.5 cycles.
+    /* Configure ADC for software trigger */
+    ADC1->CTRL2 = ADC_CR2_JEXSEL_JSWSTART |
+                  ADC_CTRL2_ADON;
+    delayMs(20);
+    /* Configure Sample time to maximum */
+    adcSampleTime(ADC_CHANNEL_INTRV, 7);
+    adcSampleTime(ADC_CHANNEL_TS, 7);
+    adcSampleTime(ADC_CHANNEL_5, 7);
+    // wake up Vrefint
+    ADC1->CTRL2 |= ADC_CTRL2_TSREF;
     // Perform start up calibration
-    adcCalibrate();
-    // Configure channels to be converted and enable scan mode
-    ADC1->RSQ3 = (HW_ISENSE_CHANNEL << 5) | (HW_VBAT_CHANNEL << 0);
-    ADC1->RSQ1 = (1 << 20); // Two channels on sequence
+    if(!adcCalibrate()){
+        return 0;
+    }
+    /* Configure channel sequence scan */
     ADC1->CTRL1 |= ADC_CTRL1_SCN;
-    // Configure DMA
-    adcdma.dir = DMA_DIR_P2M;
-    adcdma.ssize = DMA_DATA_SIZE_16;
-    adcdma.dsize = DMA_DATA_SIZE_16;
-    adcdma.src = (void *)&ADC1->RDOR;
-    adcdma.dst = (void *)&hadc.result[0];
-    adcdma.eot = adcEocHandler;
-    adcdma.len = ADC_SEQ_LEN;
+    ADC1->JSQ = (ADC_SEQ_3 << 15) |
+                (ADC_SEQ_2 << 10) |
+                (ADC_SEQ_1 << 5) |
+                ((ADC_SEQ_LEN - 1) << 20);
 
-    DMA_Config(&adcdma, DMA1_REQ_ADC1);
-
-    ADC1->CTRL2 |= ADC_CTRL2_DMAEN;
-
-    NVIC_EnableIRQ(DMA1_Channel1_IRQn);
-
-    hadc.status = 0;
+    return 1;
 }
 
 /**
  * @brief
  * */
-static void adcStartConversion(void)
+uint8_t adcConversionStart(uint8_t wait)
 {
-    DMA_Start(&adcdma);
-    hadc.status &= ~ADC_RDY;
-    ADC1->CTRL2 |= ADC_CTRL2_SWSTR;
+    ADC1->STS = 0;
+    ADC1->CTRL2 |= ADC_CTRL2_JSWSTR;
+
+    if(wait){
+        uint32_t timeout = 0xFFFF;
+        do{
+            if (--timeout == 0) {
+                return 0;
+            }
+        }while ((ADC1->STS & ADC_STS_JEC) == RESET && timeout);
+    }
+
+    return 1;
 }
 
 /**
- * @brief Get current adc resolution (mV/step)
- * */
-float adcGetResolution(void)
+ * @brief
+ * @param ch
+ * @return
+ */
+uint16_t adcConversionGet(uint8_t ch)
 {
-    return hadc.resolution;
+    if(ADC1->STS & ADC_STS_JEC){
+        switch(ch){
+        case ADC_SEQ_1:
+            return ADC1->JDOR1;
+        case ADC_SEQ_2:
+            return ADC1->JDOR2;
+        case ADC_SEQ_3:
+            return ADC1->JDOR3;
+        default: break;
+        }
+    }
+
+    return 0xFFFF;
+}
+
+/**
+ * @brief
+ * @param ch
+ * @return
+ */
+int32_t adcVoltageGet(uint8_t ch)
+{
+    return adcConversionGet(ch) * hadc.resolution;
 }
 #endif
 
@@ -534,8 +509,9 @@ int main(void)
 
     // Configure cpu and bus clock's
     SystemConfigClockSrc(RCC_CFG_SYSCLKSEL_HSI);
+    uint32_t sclk = SystemConfigPll(RCC_CFG_PLLRC_HSE, HSE_VALUE, 150000000);
 
-    if (SystemConfigPll(RCC_CFG_PLLRC_HSE, HSE_VALUE, 150000000))
+    if (sclk)
     {
         SystemConfigClockSrc(RCC_CFG_SYSCLKSEL_PLL);
         SystemCoreClockUpdate();
@@ -551,11 +527,12 @@ int main(void)
     DBG_BOARD_INF("Debug started");
 #endif
 
+    if(!sclk){
+        DBG_BOARD_ERR("PLL Config fail");
+    }
+
     systicksInit();
     DBG_BOARD_INF("Systick started");
-
-    // ptInit(&pt1);
-    // DBG_BOARD_INF("Main tick timer started");
 
 #ifdef ENABLE_BUZZER
     tone_pwm_init_t tone_init;
@@ -565,25 +542,20 @@ int main(void)
     tone_init.tmr = BUZ_TIM;
     tone_init.volume = BUZ_DEFAULT_VOLUME;
 
-    if (TONE_PwmInit(&tone_init) == TONE_IDLE)
-    {
+    if (TONE_PwmInit(&tone_init) == TONE_IDLE) {
         DBG_BOARD_WRN("Buzzer Initialized");
     }
 #endif
 
 #ifdef ENABLE_SPI
-    hspi.bus = CC25_SPU_BUS;
+    hspi.bus = SPI_BUS1;
     hspi.freq = 4000;
     hspi.cfg = SPI_MODE0;
 
-    if (SPI_Init(&hspi) == SPI_OK)
-    {
-        SPI_PINS_INIT;
+    if (SPI_Init(&hspi) == SPI_OK){
         DBG_BOARD_INF("SPI Initialized");
-    }
-    else
-    {
-        DBG_BOARD_ERR("SPI failed");
+    }else{
+        DBG_BOARD_ERR("SPI fail");
     }
 #endif
 
@@ -594,7 +566,11 @@ int main(void)
 #endif
 
 #ifdef ENABLE_ADC
-    adcInit();
+    if(adcInit()){
+        DBG_BOARD_INF("ADC Initialized");
+    }else{
+        DBG_BOARD_ERR("ADC Fail");
+    }
 #endif
 
 #ifdef ENABLE_I2C
@@ -605,13 +581,11 @@ int main(void)
 
     if (I2C_Init(&i2cbus) == I2C_SUCCESS)
     {
-        GPIO_Config(PB_10, GPO_MS_AF_OD);
-        GPIO_Config(PB_11, GPO_MS_AF_OD);
-        DBG_BOARD_INF("I2C Init ok");
+        DBG_BOARD_INF("I2C Initialized");
     }
     else
     {
-        DBG_BOARD_ERR("I2C Init fail");
+        DBG_BOARD_ERR("I2C fail");
     }
 #endif
 
