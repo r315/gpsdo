@@ -1,6 +1,7 @@
 
 #include <stdint.h>
 #include <stdio.h>
+#include <math.h>
 #include "board.h"
 #include "gpsdo.h"
 #include "logger.h"
@@ -514,6 +515,29 @@ cli_command_t cli_cmds [] = {
 };
 #endif /* ENABLE_CLI */
 
+/**
+ * @brief Obtain external temperature using adc and k type thermistor
+ * @param
+ * @return tmeprature in degre C
+ */
+float tempRead(void)
+{
+    int voltage = adcConversionGet(ADC_CHANNEL_TS_EXT);
+
+    if (voltage == 0)
+        return -273.15f;
+
+    // Calculate thermistor resistance
+    float r_ntc = (THM_R_FIXED * voltage) / (OXCO_VCC - voltage);
+
+    // Apply Beta formula to get temperature in Kelvin
+    float temp_k = 1.0f / ( (1.0f / THM_T0) + (1.0f / THM_BETA) * log(r_ntc / THM_R0) );
+
+    // Convert Kelvin to Celsius
+    return temp_k - 273.15f;
+}
+
+
 static void titleLine(char start, char mid, char end, uint8_t len)
 {
     putchar(start);
@@ -576,14 +600,12 @@ void app(void)
         #endif
 
         if(millis() > next_tick){
-            #ifdef ENABLE_TERMISTOR
+            #ifdef ENABLE_ADC
             if(sys_flags & SYS_FLAG_LOG_TEMP){
-                float temp = temp_get();
+                float temp = tempRead();
                 LOG_INF("Temp %d.%d", (int)temp, (int)(temp*10)%10);
             }
-            #endif
 
-            #ifdef ENABLE_ADC
             if(sys_flags & SYS_FLAG_LOG_VREFINT){
                 LOG_INF("Vrefint %ldmV", adcVoltageGet(ADC_CHANNEL_INTRV));
             }

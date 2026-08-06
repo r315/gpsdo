@@ -1,5 +1,4 @@
 #include <stdint.h>
-#include <math.h>
 #include "board.h"
 #include "uart.h"
 #include "i2c.h"
@@ -716,27 +715,6 @@ uint16_t adcConversionGet(uint8_t ch)
 int32_t adcVoltageGet(uint8_t ch)
 {
     return (adcConversionGet(ch) * VDDA) / ADC_RES;
-}
-/**
- * @brief Obtain external temperature using adc and k type thermistor
- * @param
- * @return tmeprature in degre C
- */
-float temp_get(void)
-{
-    int voltage = adcConversionGet(THM_ADC_CH);
-
-    if (voltage == 0)
-        return -273.15f;
-
-    // Calculate thermistor resistance
-    float r_ntc = (THM_R_FIXED * voltage) / (VCC5V0 - voltage);
-
-    // Apply Beta formula to get temperature in Kelvin
-    float temp_k = 1.0f / ( (1.0f / THM_T0) + (1.0f / THM_BETA) * log(r_ntc / THM_R0) );
-
-    // Convert Kelvin to Celsius
-    return temp_k - 273.15f;
 }
 
 /**

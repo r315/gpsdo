@@ -34,7 +34,7 @@ extern "C" {
 
 #define DAC_MAX_VAL     0x0FFF      // 12bit DAC
 
-#define VCC5V0          4420          // OXCO supply
+#define OXCO_VCC        4420          // OXCO supply
 #define VDDA            3300          // ADC reference voltage in mv
 #define VREF            2500          // Vref from LT1009
 #define ADC_RES         4096          // 12-bit ADC resolution

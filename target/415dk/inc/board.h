@@ -69,6 +69,7 @@ extern "C" {
 #define ADC_INTRV_VALUE         1200.0f
 #define ADC_RESOLUTION          4096          // 12-bit ADC resolution
 #define ADC_VDDA                3300          // ADC reference voltage in mv
+#define OXCO_VCC                4420          // OXCO supply
 
 #define THM_R_FIXED             9840.0        // Pull-up resistor value in ohms
 #define THM_BETA                3950.0        // Beta parameter of the NTC thermistor
