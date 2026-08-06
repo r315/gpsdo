@@ -93,7 +93,7 @@ LIB_SOURCES +=$(MIDDLEWARE_PATH)/cli-simple/cli_simple.c
 endif
 
 ifneq ($(filter ENABLE_GPS, $(FEATURE_ENABLE)),)
-APP_SOURCES +=$(APP_PATH)/gpsdo.c
+APP_SOURCES +=$(APP_PATH)/gps.c
 endif
 
 ifneq ($(filter ENABLE_IOEXPANDER, $(FEATURE_ENABLE)),)

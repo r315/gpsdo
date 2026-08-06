@@ -3,12 +3,16 @@
 #include <stdio.h>
 #include <math.h>
 #include "board.h"
-#include "gpsdo.h"
+#include "gps.h"
 #include "logger.h"
 #include "cli_simple.h"
 #include "clock_gen.h"
 #include "wdt.h"
 #include "clock.h"
+
+#ifndef VERSION
+#define VERSION "vx.x.x"
+#endif
 
 #define SYS_FLAG_LOG_TEMP     (1 << 0)
 #define SYS_FLAG_LOG_VREFINT  (1 << 1)
@@ -156,41 +160,6 @@ static int clearCmd(int argc, char **argv)
 {
     (void)argc;(void)argv;
     CLI_Clear();
-    return CLI_OK;
-}
-
-static int gpsdoCmd(int argc, char **argv)
-{
-    if(argc == 1 || CLI_IS_PARM(1, "help")){
-        printf("Usage: gpsdo [args]\n");
-        printf("\tstart, \n");
-        return CLI_OK;
-    }
-
-#ifdef ENABLE_GPS
-    if(CLI_IS_PARM(1, "start")){
-        gpsdo_start();
-        return CLI_OK;
-    }
-
-    if(CLI_IS_PARM(1, "stop")){
-        gpsdo_stop();
-        return CLI_OK;
-    }
-#endif
-/*
-if(CLI_IS_PARM(1, "div")){
-    int32_t div;
-    if(CLI_GET_INT_PARM(2, div)){
-        div_start(div);
-        return CLI_OK;
-    }
-}
-*/
-
-    //printf("counter: 0x%08lx\n", last_counter);
-    //printf("count:   0x%08lx\n", counts);
-
     return CLI_OK;
 }
 
@@ -371,7 +340,7 @@ static int dacCmd(int argc, char **argv)
 static int gpsCmd(int argc, char **argv)
 {
     (void)argc;(void)argv;
-    gpsdo_log_gps_output(argv[1][0] == '1' ? 1 : 0);
+    //gpsdo_log_gps_output(argv[1][0] == '1' ? 1 : 0);
     return CLI_OK;
 }
 #endif
@@ -520,7 +489,6 @@ cli_command_t cli_cmds [] = {
     {"reset", resetCmd},
     {"clear", clearCmd},
     {"sys", sysCmd},
-    {"gpsdo", gpsdoCmd},
 #ifdef ENABLE_I2C
     {"i2c", i2cCmd},
 #endif
@@ -604,7 +572,7 @@ void app(void)
 
     //div_start(10000000);
     #ifdef ENABLE_GPS
-    gps_init(&gps_serial);
+    gpsInit(&gps_serial);
     #endif
 
     #ifdef ENABLE_CLI
@@ -618,7 +586,7 @@ void app(void)
 
     while(1) {
         #ifdef ENABLE_GPS
-        gps_process();
+        gpsProcess();
         #endif
 
         #ifdef ENABLE_CLI
