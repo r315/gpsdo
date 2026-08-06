@@ -84,7 +84,8 @@ extern "C" {
 enum led_tag{
     LED_PPS = 0,
     LED_LOCK,
-    LED_ALM
+    LED_ALM,
+    LED_RGB
 };
 
 enum mco_src {

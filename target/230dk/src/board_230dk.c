@@ -62,7 +62,7 @@ stdinout_t gps_serial = {
 static const struct adc_channel board_adc_channels[] ={
     {0U, ADC_CHANNEL_16, ADC_SAMPLETIME_239POINT5}, // internal temperature sensor
     {1U, ADC_CHANNEL_17, ADC_SAMPLETIME_239POINT5}, // 1.2V internal reference
-    {2U, THM_ADC_CH, ADC_SAMPLETIME_239POINT5},     // external temperature sensor
+    {2U, ADC_CHANNEL_TS_EXT, ADC_SAMPLETIME_239POINT5},     // external temperature sensor
 };
 
 /**
@@ -699,7 +699,7 @@ uint8_t adcConversionStart(uint8_t wait)
 uint16_t adcConversionGet(uint8_t ch)
 {
     switch(ch){
-        case THM_ADC_CH: return ADC_IDATA2;
+        case ADC_CHANNEL_TS_EXT: return ADC_IDATA2;
         case ADC_CHANNEL_16: return ADC_IDATA0;
         case ADC_CHANNEL_17:return ADC_IDATA1;
         default: return 0;

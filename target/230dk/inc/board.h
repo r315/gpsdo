@@ -39,7 +39,7 @@ extern "C" {
 #define VREF            2500          // Vref from LT1009
 #define ADC_RES         4096          // 12-bit ADC resolution
 
-#define THM_ADC_CH      ADC_CHANNEL_5
+#define ADC_CHANNEL_TS_EXT  ADC_CHANNEL_5
 #define THM_R_FIXED     9840.0        // Pull-up resistor value in ohms
 #define THM_BETA        3950.0        // Beta parameter of the NTC thermistor
 #define THM_T0          298.15        // 25°C in Kelvin
@@ -51,7 +51,8 @@ extern "C" {
 enum led_tag{
     LED_PPS = 0,
     LED_LOCK,
-    LED_ALM
+    LED_ALM,
+    LED_RGB
 };
 
 enum mco {

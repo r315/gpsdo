@@ -12,6 +12,7 @@
 
 #define SYS_FLAG_LOG_TEMP     (1 << 0)
 #define SYS_FLAG_LOG_VREFINT  (1 << 1)
+#define SYS_FLAG_LOG_COUNT    (1 << 2)
 
 static uint32_t sys_flags;
 static uint32_t next_tick;
@@ -26,6 +27,17 @@ static uint8_t i2c_device_addr;
 static void tdcHandler(int32_t val)
 {
     printf("%ld\n", val);
+}
+#endif
+
+#ifdef ENABLE_COUNT
+static uint32_t cur_count;
+static uint8_t led_color;
+
+static void countHandler(uint32_t count)
+{
+    cur_count = count;
+    sys_flags |= SYS_FLAG_LOG_COUNT;
 }
 #endif
 
@@ -375,6 +387,7 @@ static int adcCmd(int argc, char **argv)
     return CLI_OK;
 }
 #endif
+
 #if 0
 static int oscCmd(int argc, char **argv)
 {
@@ -413,12 +426,14 @@ static int oscCmd(int argc, char **argv)
     return CLI_OK;
 }
 #endif
+
 static int sysCmd(int argc, char **argv)
 {
     if(CLI_IS_PARM(1, "help") || argc == 1){
         printf("Usage: sys [args]\n");
-        printf("  log <temp|vrefint> <0|1>     Logging\n");
+        printf("  log <temp|vrefint|count> <0|1>     Logging\n");
         printf("  mco <src> <div>              Main clock output 0-15 0-15\n");
+
         return CLI_OK;
     }
 
@@ -427,11 +442,12 @@ static int sysCmd(int argc, char **argv)
         #ifdef BOARD_DK415
         if(CLI_GET_INT_PARM(2, src) && CLI_GET_INT_PARM(3, div)){
             mco(src, div << 4);
+        }
         #else
         if(CLI_GET_INT_PARM(2, src)){
             mco(src);
-        #endif
         }
+        #endif
         return CLI_OK;
     }
 
@@ -453,6 +469,16 @@ static int sysCmd(int argc, char **argv)
             }
             return CLI_OK;
         }
+        #ifdef ENABLE_COUNT
+        if(CLI_IS_PARM(2, "count")){
+            if(argv[3][0] == '1'){
+                countStart(countHandler);
+            }else{
+                countStop();
+            }
+            return CLI_OK;
+        }
+        #endif
     }
 
     return CLI_BAD_PARAM;
@@ -610,6 +636,16 @@ void app(void)
                 LOG_INF("Vrefint %ldmV", adcVoltageGet(ADC_CHANNEL_INTRV));
             }
             adcConversionStart(FALSE);
+            #endif
+
+            #ifdef ENABLE_COUNT
+            if(sys_flags & SYS_FLAG_LOG_COUNT){
+                //printf("\2C%ld\3", cur_count - last_count);
+                printf("\r%ld ", cur_count);
+                led_color = (led_color < 6) ? led_color + 1 : 1;
+                ledSet(LED_RGB, led_color);
+                sys_flags &= ~SYS_FLAG_LOG_COUNT;
+            }
             #endif
             next_tick = millis() + sys_tick_ms;
         }

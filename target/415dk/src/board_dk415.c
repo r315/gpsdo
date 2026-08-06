@@ -25,12 +25,22 @@
 #define DBG_BOARD_PRINT(...)
 #endif
 
-#define ADC_STATUS_RDY (1 << 0)
-#define ADC_STATUS_DIV (1 << 1)
-#define ADC_STATUS_CAL (1 << 2)
-#define ADC_STATUS_RES (1 << 3)
+#define ADC_STATUS_RDY          (1 << 0)
+#define ADC_STATUS_DIV          (1 << 1)
+#define ADC_STATUS_CAL          (1 << 2)
+#define ADC_STATUS_RES          (1 << 3)
 #define ADC_CR2_EXSEL_SWSTART   (ADC_CTRL2_EXTREN | (7 << 17))
 #define ADC_CR2_JEXSEL_JSWSTART (ADC_CTRL2_JEXTREN | (7 << 12))
+
+#define TMR_SMC_TRGSEL_EXT      (7 << 4)
+#define TMR_SMC_SMSEL_EXT       (7 << 0)
+#define TMR_CCM1_C1C_C1IFP1     (1 << 0)
+#define TMR_CCM1_C1C_C2IFP1     (2 << 0)
+#define TMR_CCM1_C1C_STCI       (3 << 0)
+#define TMR_CCM1_C2C_C1IFP1     (1 << 8)
+#define TMR_CCM1_C2C_C2IFP1     (2 << 8)
+#define TMR_CCM1_C2C_STCI       (3 << 8)
+
 
 typedef struct adc {
     uint32_t calibration_code;
@@ -76,11 +86,9 @@ stdinout_t gps_serial = {
 static spibus_t hspi;
 #endif
 
-#ifdef ENABLE_PWM
-#ifdef ENABLE_DC_MOTOR
-static pwmchip_t pwm2;
-#endif
-static void pwmOutInit(void);
+#ifdef ENABLE_COUNT
+static uint32_t count_last_cap;
+static void (*counterHandler)(uint32_t);
 #endif
 
 #ifdef ENABLE_I2C
@@ -148,6 +156,9 @@ void ledSet(enum led_tag tag, uint8_t state)
             ioexp->clr(&i2cbus, (state << LED_ALM_Pos) & LED_ALM_MASK);
         else
             ioexp->set(&i2cbus, LED_ALM_MASK);
+        break;
+    case LED_RGB:
+        ioexp->write(&i2cbus, state);
         break;
     default:
         break;
@@ -234,27 +245,66 @@ uint8_t spiRead(void)
 }
 #endif
 
+#ifdef ENABLE_COUNT
 /**
- * @brief Frequency measurement is archived by
- * cascading timer 2 and timer 14 to obtain a 32bit counter
- * and perform triggered captures.
+ * @brief   Frequency counter, direct count implementation.
+ *          Timer counts input signal on rising edges and
+ *          an stable external 1Hz triggers capture of timer.
  *
- * The counter counts cycles from input clock and
- * a second clock (1HZ) triggers the capture, which then
- * calls a callback with the captured value.
- * Main application calculates the difference between
- * captures to get the input frequency.
+ *          An interrupt is generated with capture event and
+ *          count is given be the difference of captured value with last.
+ *          finally count is passed to application
+ *          trough a callback.
  *
- * @param cb callback for capture with captured value
+ * @param
+ * @return  1: on success
+ */
+uint32_t countInit(void)
+{
+    /**
+     * Configure 32bit external clock counter
+     * */
+    CLOCK_Enable(TMR2, ENABLE);
+    // Enable 32bit with plus mode
+    TMR2->CTRL1 = TMR_CTRL1_PMEN;
+    // Slave mode, externam clock mode B
+    TMR2->SMC = TMR_SMC_ECLKEN |
+                TMR_SMC_SMSEL_EXT |
+                TMR_SMC_TRGSEL_EXT;
+    // Count 32bit
+    TMR2->AR = 0xFFFFFFFF;
+    // Start counting
+    TMR2->CTRL1 |= TMR_CTRL1_CNTEN;
+    GPIO_Config(PA_15, GPIO_AF_TMR2_EXT);
+    //GPIO_Config(PA_0, GPI_PD);
+    /**
+     * Configure capture mode with interrupt
+     * */
+    TMR2->CCM1 = TMR_CCM1_C2C_C1IFP1;
+    // Generate interrupt on capture
+    TMR2->DIE = TMR_DIE_C2IE;
+    GPIO_Config(PB_3, GPI_PD);
+    // Enable interrupt
+    NVIC_EnableIRQ(TMR2_GLOBAL_IRQn);
+    return 1;
+}
+/**
+ * @brief
+ * @param cb
  */
 void countStart(void (*cb)(uint32_t))
 {
-    (void)cb;
+    if(cb){
+        counterHandler = cb;
+        TMR2->CCE = TMR_CCE_C2EN;
+    }
 }
 
 void countStop(void)
 {
+    TMR2->CCE = 0;
 }
+#endif
 
 #ifdef ENABLE_PPS
 static uint32_t ppsInit(void)
@@ -595,6 +645,11 @@ int main(void)
     }
 #endif
 
+#ifdef ENABLE_COUNT
+    countInit();
+    DBG_BOARD_INF("Fcount Initialized");
+#endif
+
     /* Log reset reason
     // LPRSTF - bit7, Low power reset
     // WWDTRSTF - bit 6, window watchdog
@@ -625,4 +680,12 @@ int main(void)
 void SysTick_Handler(void)
 {
     systicks++;
+}
+
+void TMR2_GLOBAL_IRQHandler(void)
+{
+    uint32_t cap = TMR2->CC2;
+    TMR2->STS = 0;
+    counterHandler(cap - count_last_cap);
+    count_last_cap = cap;
 }
