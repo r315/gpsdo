@@ -476,7 +476,8 @@ static uint32_t adcInit(void)
     /* Configure Sample time to maximum */
     adcSampleTime(ADC_CHANNEL_INTRV, 7);
     adcSampleTime(ADC_CHANNEL_TS, 7);
-    adcSampleTime(ADC_CHANNEL_5, 7);
+    adcSampleTime(ADC_CHANNEL_TS_EXT, 7);
+    adcSampleTime(ADC_CHANNEL_OXCO_VCC, 7);
     // wake up Vrefint
     ADC1->CTRL2 |= ADC_CTRL2_TSREF;
     // Perform start up calibration
@@ -485,9 +486,10 @@ static uint32_t adcInit(void)
     }
     /* Configure channel sequence scan */
     ADC1->CTRL1 |= ADC_CTRL1_SCN;
-    ADC1->JSQ = (ADC_SEQ_3 << 15) |
-                (ADC_SEQ_2 << 10) |
-                (ADC_SEQ_1 << 5) |
+    ADC1->JSQ = (ADC_SEQ_4 << 15) |
+                (ADC_SEQ_3 << 10) |
+                (ADC_SEQ_2 << 5) |
+                (ADC_SEQ_1 << 0) |
                 ((ADC_SEQ_LEN - 1) << 20);
 
     return 1;
@@ -528,6 +530,8 @@ uint16_t adcConversionGet(uint8_t ch)
             return ADC1->JDOR2;
         case ADC_SEQ_3:
             return ADC1->JDOR3;
+        case ADC_SEQ_4:
+            return ADC1->JDOR4;
         default: break;
         }
     }

@@ -384,6 +384,7 @@ static int adcCmd(int argc, char **argv)
     printf("TEMP EXT: %ldmV\n", adcVoltageGet(ADC_CHANNEL_TS_EXT));
     printf("TEMP INT: %ldmV\n", adcVoltageGet(ADC_CHANNEL_TS));
     printf("VREF    : %ldmV\n", adcVoltageGet(ADC_CHANNEL_INTRV));
+    printf("OXCO    : %ldmV\n", adcVoltageGet(ADC_CHANNEL_OXCO_VCC) * 2);
     return CLI_OK;
 }
 #endif
@@ -546,15 +547,16 @@ cli_command_t cli_cmds [] = {
  * @param
  * @return tmeprature in degre C
  */
-float tempRead(void)
+static float tempRead(void)
 {
     int voltage = adcConversionGet(ADC_CHANNEL_TS_EXT);
+    int oxco_vcc = adcConversionGet(ADC_CHANNEL_OXCO_VCC) * 2;
 
     if (voltage == 0)
         return -273.15f;
 
     // Calculate thermistor resistance
-    float r_ntc = (THM_R_FIXED * voltage) / (OXCO_VCC - voltage);
+    float r_ntc = (THM_R_FIXED * voltage) / (oxco_vcc - voltage);
 
     // Apply Beta formula to get temperature in Kelvin
     float temp_k = 1.0f / ( (1.0f / THM_T0) + (1.0f / THM_BETA) * log(r_ntc / THM_R0) );
@@ -629,18 +631,18 @@ void app(void)
             #ifdef ENABLE_ADC
             if(sys_flags & SYS_FLAG_LOG_TEMP){
                 float temp = tempRead();
-                LOG_INF("Temp %d.%d", (int)temp, (int)(temp*10)%10);
+                printf("\rTemp %d.%d ", (int)temp, (int)(temp*10)%10);
             }
 
             if(sys_flags & SYS_FLAG_LOG_VREFINT){
-                LOG_INF("Vrefint %ldmV", adcVoltageGet(ADC_CHANNEL_INTRV));
+                printf("Vrefint %ldmV", adcVoltageGet(ADC_CHANNEL_INTRV));
             }
             adcConversionStart(FALSE);
             #endif
 
             #ifdef ENABLE_COUNT
             if(sys_flags & SYS_FLAG_LOG_COUNT){
-                //printf("\2C%ld\3", cur_count - last_count);
+                //printf("\2C%ld\3", cur_count);
                 printf("\r%ld ", cur_count);
                 led_color = (led_color < 6) ? led_color + 1 : 1;
                 ledSet(LED_RGB, led_color);

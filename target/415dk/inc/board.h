@@ -60,16 +60,17 @@ extern "C" {
 #define PWM_TIM                 TMR11
 #define DAC_MAX_VAL             0x0FFF      // 12bit DAC
 
+#define ADC_CHANNEL_4           4
 #define ADC_CHANNEL_5           5
 #define ADC_CHANNEL_16          16
 #define ADC_CHANNEL_17          17
 #define ADC_CHANNEL_TS          ADC_CHANNEL_16
 #define ADC_CHANNEL_INTRV       ADC_CHANNEL_17
 #define ADC_CHANNEL_TS_EXT      ADC_CHANNEL_5
+#define ADC_CHANNEL_OXCO_VCC    ADC_CHANNEL_4
 #define ADC_INTRV_VALUE         1200.0f
 #define ADC_RESOLUTION          4096          // 12-bit ADC resolution
 #define ADC_VDDA                3300          // ADC reference voltage in mv
-#define OXCO_VCC                4420          // OXCO supply
 
 #define THM_R_FIXED             9840.0        // Pull-up resistor value in ohms
 #define THM_BETA                3950.0        // Beta parameter of the NTC thermistor
@@ -78,8 +79,9 @@ extern "C" {
 
 #define ADC_SEQ_1               ADC_CHANNEL_TS_EXT
 #define ADC_SEQ_2               ADC_CHANNEL_TS
-#define ADC_SEQ_3               ADC_CHANNEL_INTRV
-#define ADC_SEQ_LEN             3
+#define ADC_SEQ_3               ADC_CHANNEL_OXCO_VCC
+#define ADC_SEQ_4               ADC_CHANNEL_INTRV
+#define ADC_SEQ_LEN             4
 
 enum led_tag{
     LED_PPS = 0,
