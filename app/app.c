@@ -351,7 +351,7 @@ static int adcCmd(int argc, char **argv)
     (void)argc;(void)argv;
     adcConversionStart(TRUE);
     printf("TEMP EXT: %ldmV\n", adcVoltageGet(ADC_CHANNEL_TS_EXT));
-    printf("TEMP INT: %ldmV\n", adcVoltageGet(ADC_CHANNEL_TS));
+    printf("DAC FB  : %ldmV\n", adcVoltageGet(ADC_CHANNEL_DAC_FB));
     printf("VREF    : %ldmV\n", adcVoltageGet(ADC_CHANNEL_INTRV));
     printf("OXCO    : %ldmV\n", adcVoltageGet(ADC_CHANNEL_OXCO_VCC) * 2);
     return CLI_OK;

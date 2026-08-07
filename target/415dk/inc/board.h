@@ -62,12 +62,14 @@ extern "C" {
 
 #define ADC_CHANNEL_4           4
 #define ADC_CHANNEL_5           5
+#define ADC_CHANNEL_6           6
 #define ADC_CHANNEL_16          16
 #define ADC_CHANNEL_17          17
 #define ADC_CHANNEL_TS          ADC_CHANNEL_16
 #define ADC_CHANNEL_INTRV       ADC_CHANNEL_17
 #define ADC_CHANNEL_TS_EXT      ADC_CHANNEL_5
 #define ADC_CHANNEL_OXCO_VCC    ADC_CHANNEL_4
+#define ADC_CHANNEL_DAC_FB      ADC_CHANNEL_6
 #define ADC_INTRV_VALUE         1200.0f
 #define ADC_RESOLUTION          4096          // 12-bit ADC resolution
 #define ADC_VDDA                3300          // ADC reference voltage in mv
@@ -78,7 +80,7 @@ extern "C" {
 #define THM_R0                  10000.0       // Resistance at 25°C (10kΩ)
 
 #define ADC_SEQ_1               ADC_CHANNEL_TS_EXT
-#define ADC_SEQ_2               ADC_CHANNEL_TS
+#define ADC_SEQ_2               ADC_CHANNEL_DAC_FB
 #define ADC_SEQ_3               ADC_CHANNEL_OXCO_VCC
 #define ADC_SEQ_4               ADC_CHANNEL_INTRV
 #define ADC_SEQ_LEN             4

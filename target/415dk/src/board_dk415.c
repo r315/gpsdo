@@ -464,7 +464,9 @@ static uint32_t adcCalibrate(void)
  * */
 static uint32_t adcInit(void)
 {
+    GPIO_Config(PA_4, GPI_ANALOG);
     GPIO_Config(PA_5, GPI_ANALOG);
+    GPIO_Config(PA_6, GPI_ANALOG);
 
     RCC->APB2EN |= RCC_APB2EN_ADC1EN; // Enable and reset ADC1
     RCC->APB2RST |= RCC_APB2EN_ADC1EN;
@@ -474,10 +476,10 @@ static uint32_t adcInit(void)
                   ADC_CTRL2_ADON;
     delayMs(20);
     /* Configure Sample time to maximum */
-    adcSampleTime(ADC_CHANNEL_INTRV, 7);
-    adcSampleTime(ADC_CHANNEL_TS, 7);
-    adcSampleTime(ADC_CHANNEL_TS_EXT, 7);
-    adcSampleTime(ADC_CHANNEL_OXCO_VCC, 7);
+    adcSampleTime(ADC_SEQ_4, 7);
+    adcSampleTime(ADC_SEQ_3, 7);
+    adcSampleTime(ADC_SEQ_2, 7);
+    adcSampleTime(ADC_SEQ_1, 7);
     // wake up Vrefint
     ADC1->CTRL2 |= ADC_CTRL2_TSREF;
     // Perform start up calibration
