@@ -261,13 +261,20 @@ uint8_t spiRead(void)
  */
 uint32_t countInit(void)
 {
+    #ifdef BOARD_DK415
+    GPIO_Config(PA_15, GPIO_REMAP_PA15_TMR2_EXT);
+    GPIO_Config(PB_3, GPI_PD);
+    #else
+    GPIO_Config(PA_0, GPI_PD);
+    GPIO_Config(PA_1, GPI_PD);
+    #endif
     /**
      * Configure 32bit external clock counter
      * */
     CLOCK_Enable(TMR2, ENABLE);
     // Enable 32bit with plus mode
     TMR2->CTRL1 = TMR_CTRL1_PMEN;
-    // Slave mode, externam clock mode B
+    // Slave mode, external clock mode B
     TMR2->SMC = TMR_SMC_ECLKEN |
                 TMR_SMC_SMSEL_EXT |
                 TMR_SMC_TRGSEL_EXT;
@@ -275,15 +282,13 @@ uint32_t countInit(void)
     TMR2->AR = 0xFFFFFFFF;
     // Start counting
     TMR2->CTRL1 |= TMR_CTRL1_CNTEN;
-    GPIO_Config(PA_15, GPIO_AF_TMR2_EXT);
-    //GPIO_Config(PA_0, GPI_PD);
+
     /**
      * Configure capture mode with interrupt
      * */
     TMR2->CCM1 = TMR_CCM1_C2C_C1IFP1;
     // Generate interrupt on capture
     TMR2->DIE = TMR_DIE_C2IE;
-    GPIO_Config(PB_3, GPI_PD);
     // Enable interrupt
     NVIC_EnableIRQ(TMR2_GLOBAL_IRQn);
     return 1;
@@ -307,6 +312,11 @@ void countStop(void)
 #endif
 
 #ifdef ENABLE_PPS
+/**
+ * @brief PPS generation from external 32768kHz oscillator
+ * @param
+ * @return
+ */
 static uint32_t ppsInit(void)
 {
     uint8_t retry = 10;
@@ -316,8 +326,8 @@ static uint32_t ppsInit(void)
     // Reset to ensure that is stable
     RCC->BDC |= RCC_BDC_BDRST;
     RCC->BDC &= ~RCC_BDC_BDRST;
-    // Enable Low speed xtal
-    RCC->BDC |= RCC_BDC_LSEEN;
+    // Enable external low speed oscillator with bypass
+    RCC->BDC |= RCC_BDC_LSEEN | RCC_BDC_LSEBYPS;
 
     do{
         delayMs(50);
@@ -326,7 +336,7 @@ static uint32_t ppsInit(void)
         }
     }while(!(RCC->BDC & RCC_BDC_LSESTBL));
 
-    // Enable RTC and use LXTAL
+    // Enable RTC and use LEXT
     RCC->BDC |= RCC_BDC_ERTCEN | RCC_BDC_ERTCSEL_LSE;
 
     /* Configure ERTC */
@@ -375,7 +385,7 @@ static void dacInit(void)
 
 void dacEnable(uint8_t en)
 {
-    GPIO_Config(PA_7, en ? GPIO_AF_TMR11_CH1 : GPI_FLOAT);
+    GPIO_Config(PA_7, en ? (GPIO_REMAP_PA7_TMR11_CH1 | GPO_HS_AF) : GPI_FLOAT);
 }
 
 uint16_t dacValueGet()
@@ -457,10 +467,10 @@ static uint32_t adcCalibrate(void)
 
 
 /**
- * @brief Configure ADC for a HW_VBAT_CHANNEL channel in interrupt mode and initiates a convertion.
- *  After convertion the result is stored locally through the interrupt
- *
- * PA0/AN0 is the default channel
+ * @brief   Configure ADC to read 4 channels
+ *          The 4 channels are read with preemptive channels,
+ *          whit this implementation each analog channel has his own
+ *          data register and DMA is not necessary.
  * */
 static uint32_t adcInit(void)
 {
@@ -498,7 +508,9 @@ static uint32_t adcInit(void)
 }
 
 /**
- * @brief
+ * @brief   Conversion is started with software
+ *          trigger and resolts are giben by JDORx
+ *          registers.
  * */
 uint8_t adcConversionStart(uint8_t wait)
 {
