@@ -568,7 +568,7 @@ int main(void)
 {
     // Enable gpio peripherals
     RCC->APB2EN |= RCC_APB2EN_GPIOAEN | RCC_APB2EN_GPIOBEN |
-                   RCC_APB2EN_GPIOCEN | RCC_APB2EN_AFIOEN;
+                   RCC_APB2EN_GPIOCEN | RCC_APB2EN_GPIOFEN | RCC_APB2EN_AFIOEN;
     // Configure basic gpio
     LED_INIT;
 #ifdef ENABLE_DEBUG
