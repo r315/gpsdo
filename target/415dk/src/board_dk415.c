@@ -506,6 +506,7 @@ void countGateTimeSet(uint32_t ms)
  */
 static uint32_t ppsInit(void)
 {
+    #ifdef ENABLE_PPS_RTC
     uint8_t retry = 10;
     CLOCK_Enable(PWR, ENABLE);
     // Enable write on ERTC
@@ -543,6 +544,31 @@ static uint32_t ppsInit(void)
 
     // Enable 1Hz output on PC13
     GPIO_Config(PC_13, GPO_MS_AF);
+    #else
+    /**
+     * Generate PPS derived from
+     * cpu clock.
+     * To study, as cpu clock is generated from pll
+     * does this introduces jitter?
+     */
+    CLOCK_Enable(TIMER_PPS, ENABLE);
+    // Clear configuration
+    TIMER_PPS->CTRL1 = 0;
+    // Div by 10000, Ftmr = 10kHz
+    TIMER_PPS->DIV = (CLOCK_Get(CLOCK_CLK4) / 10000UL) - 1;
+    // Div again by 5000, Fout = 2Hz
+    TIMER_PPS->AR = 5000 - 1;
+    // Toggle output on match, this also divides by 2
+    TIMER_PPS->CCM1 = TMR_CCM1_C1OCTRL_C1ORAW_TOGGLE;
+    // Set 50% duty
+    TIMER_PPS->CC1 = TIMER_PPS->AR >> 1;
+    // Enable channel
+    TIMER_PPS->CCE = TMR_CCE_C1EN;
+    // Enable timer
+    TIMER_PPS->CTRL1 = TMR_CTRL1_CNTEN;
+    // Config output pin
+    GPIO_Config(PA_2, GPO_HS_AF);
+    #endif
     return 1;
 }
 #endif
