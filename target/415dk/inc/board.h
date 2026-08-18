@@ -117,6 +117,11 @@ enum mco_div {
     MCO_DIV_512 = (15 << 4)
 };
 
+#ifdef ENABLE_COUNT_RECIPROCAL
+typedef float countres_t;
+#else
+typedef uint32_t countres_t;
+#endif
 
 /* Global varaiables */
 extern stdinout_t cli_serial;
@@ -133,8 +138,11 @@ uint32_t eepromErase(void);
 
 void mco(enum mco_src src, enum mco_div div);
 void ledSet(enum led_tag tag, uint8_t state);
-void countStart(void(*cb)(uint32_t));
+void countEocSet(void(*cb)(countres_t));
+void countGateTimeSet(uint32_t ms);
+void countStart(void);
 void countStop(void);
+
 
 uint16_t i2cWrite(uint8_t dev_addr, const uint8_t *data, uint16_t size);
 uint16_t i2cRead(uint8_t dev_addr, uint8_t *data, uint16_t size);

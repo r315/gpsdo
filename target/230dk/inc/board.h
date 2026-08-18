@@ -95,8 +95,9 @@ void __debugbreak(void);
 void mco(uint8_t src);
 
 /* Frequency counter */
-void countStart(void(*cb)(uint32_t));
+void countStart(void);
 void countStop(void);
+void countEocSet(void(*cb)(uint32_t));
 void tdc_start(void(*cb)(int32_t));
 void tdc_stop(void);
 void tdc_select(uint8_t input);

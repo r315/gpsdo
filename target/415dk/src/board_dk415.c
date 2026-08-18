@@ -25,6 +25,11 @@
 #define DBG_BOARD_PRINT(...)
 #endif
 
+#define TIMER_GATE              TMR10
+#define COUNTER_B_LSB           TMR1
+#define COUNTER_B_MSB           TMR3
+#define COUNTER_A               TMR2
+
 #define ADC_STATUS_RDY          (1 << 0)
 #define ADC_STATUS_DIV          (1 << 1)
 #define ADC_STATUS_CAL          (1 << 2)
@@ -32,14 +37,63 @@
 #define ADC_CR2_EXSEL_SWSTART   (ADC_CTRL2_EXTREN | (7 << 17))
 #define ADC_CR2_JEXSEL_JSWSTART (ADC_CTRL2_JEXTREN | (7 << 12))
 
+#define TMR_CTRL2_MMSEL_RST     (0 << 4)
+#define TMR_CTRL2_MMSEL_ENABLE  (1 << 4)
+#define TMR_CTRL2_MMSEL_UPDATE  (2 << 4)
+#define TMR_CTRL2_MMSEL_C1DT    (3 << 4)
+#define TMR_CTRL2_MMSEL_C1ORAW  (4 << 4)
+#define TMR_CTRL2_MMSEL_C2ORAW  (5 << 4)
+#define TMR_CTRL2_MMSEL_C3ORAW  (6 << 4)
+#define TMR_CTRL2_MMSEL_C4ORAW  (7 << 4)
+#define TMR_SMC_TRGSEL_IS0      (0 << 4)
+#define TMR_SMC_TRGSEL_IS1      (1 << 4)
+#define TMR_SMC_TRGSEL_IS2      (2 << 4)
+#define TMR_SMC_TRGSEL_IS3      (3 << 4)
+#define TMR_SMC_TRGSEL_RAW      (4 << 4)
+#define TMR_SMC_TRGSEL_C1IF1    (5 << 4)
+#define TMR_SMC_TRGSEL_C1IF2    (6 << 4)
 #define TMR_SMC_TRGSEL_EXT      (7 << 4)
+#define TMR_SMC_SMSEL_RST       (4 << 0)
+#define TMR_SMC_SMSEL_SUS       (5 << 0)
+#define TMR_SMC_SMSEL_TRG       (6 << 0)
 #define TMR_SMC_SMSEL_EXT       (7 << 0)
+#define TMR_CCM1_C1C_OUT        (0 << 0)
 #define TMR_CCM1_C1C_C1IFP1     (1 << 0)
 #define TMR_CCM1_C1C_C2IFP1     (2 << 0)
 #define TMR_CCM1_C1C_STCI       (3 << 0)
-#define TMR_CCM1_C2C_C1IFP1     (1 << 8)
-#define TMR_CCM1_C2C_C2IFP1     (2 << 8)
+#define TMR_CCM1_C1OCTRL_C1ORAW_HIGH    (1 << 4)
+#define TMR_CCM1_C1OCTRL_C1ORAW_LOW     (2 << 4)
+#define TMR_CCM1_C1OCTRL_C1ORAW_TOGGLE  (3 << 4)
+#define TMR_CCM1_C1OCTRL_PWMA   (6 << 4)
+#define TMR_CCM1_C1OCTRL_PWMB   (7 << 4)
+#define TMR_CCM1_C2C_OUT        (0 << 8)
+#define TMR_CCM1_C2C_C2IFP2     (1 << 8)
+#define TMR_CCM1_C2C_C1IFP2     (2 << 8)
 #define TMR_CCM1_C2C_STCI       (3 << 8)
+#define TMR_CCM1_C2OCTRL_C1ORAW_HIGH    (1 << 12)
+#define TMR_CCM1_C2OCTRL_C1ORAW_LOW     (2 << 12)
+#define TMR_CCM1_C2OCTRL_C1ORAW_TOGGLE  (3 << 12)
+#define TMR_CCM1_C2OCTRL_PWMA   (6 << 12)
+#define TMR_CCM1_C2OCTRL_PWMB   (7 << 12)
+
+#define TMR_CCM2_C3C_OUT        (0 << 0)
+#define TMR_CCM2_C3C_C3IFP3     (1 << 0)
+#define TMR_CCM2_C3C_C4IFP3     (2 << 0)
+#define TMR_CCM2_C3C_STCI       (3 << 0)
+#define TMR_CCM2_C3OCTRL_C3ORAW_HIGH    (1 << 4)
+#define TMR_CCM2_C3OCTRL_C3ORAW_LOW     (2 << 4)
+#define TMR_CCM2_C3OCTRL_C3ORAW_TOGGLE  (3 << 4)
+#define TMR_CCM2_C3OCTRL_PWMA   (6 << 4)
+#define TMR_CCM2_C3OCTRL_PWMB   (7 << 4)
+#define TMR_CCM2_C4C_OUT        (0 << 8)
+#define TMR_CCM2_C4C_C4IFP4     (1 << 8)
+#define TMR_CCM2_C4C_C3IFP4     (2 << 8)
+#define TMR_CCM2_C4C_STCI       (3 << 8)
+#define TMR_CCM2_C4OCTRL_C4ORAW_HIGH    (1 << 12)
+#define TMR_CCM2_C4OCTRL_C4ORAW_LOW     (2 << 12)
+#define TMR_CCM2_C4OCTRL_C4ORAW_TOGGLE  (3 << 12)
+#define TMR_CCM2_C4OCTRL_PWMA   (6 << 12)
+#define TMR_CCM2_C4OCTRL_PWMB   (7 << 12)
 
 
 typedef struct adc {
@@ -87,8 +141,8 @@ static spibus_t hspi;
 #endif
 
 #ifdef ENABLE_COUNT
-static uint32_t count_last_cap;
-static void (*counterHandler)(uint32_t);
+static countres_t count_last_cap;
+static void (*counterHandler)(countres_t);
 #endif
 
 #ifdef ENABLE_I2C
@@ -247,15 +301,7 @@ uint8_t spiRead(void)
 
 #ifdef ENABLE_COUNT
 /**
- * @brief   Frequency counter, direct count implementation.
- *          Timer counts input signal on rising edges and
- *          an stable external 1Hz triggers capture of timer.
- *
- *          An interrupt is generated with capture event and
- *          count is given be the difference of captured value with last.
- *          finally count is passed to application
- *          trough a callback.
- *
+ * @brief   Frequency counter initialization
  * @param
  * @return  1: on success
  */
@@ -264,50 +310,191 @@ uint32_t countInit(void)
     #ifdef BOARD_DK415
     GPIO_Config(PA_15, GPIO_REMAP_PA15_TMR2_EXT);
     GPIO_Config(PB_3, GPI_PD);
+    #ifndef ENABLE_COUNT_DIREC
+    GPIO_Config(PB_8, GPO_HS_AF);
+    GPIO_Config(PA_0, GPIO_REMAP_PA0_TMR1_EXT);
+    #endif
     #else
     GPIO_Config(PA_0, GPI_PD);
     GPIO_Config(PA_1, GPI_PD);
     #endif
+    #ifdef ENABLE_COUNT_RECIPROCAL
     /**
-     * Configure 32bit external clock counter
+     *  Reciprocal count implementation.
+     *   This implementation requires an external FF and AND gate to perciselly
+     *   enable count. With this logic counting is started and stopped exactly
+     *   at input signal rising edges.
+     *
+     *   First counter is composed by a 32bit timer configured for counting
+     *   clocks using dedicated TMRx_EXT input. Count occurs at  rising edges
+     *   and only if gate is "open" by external control logic.
+     *
+     *   Secont counter is composed by two 16bit timers connected in cascade to
+     *   form a 32bit counter. This counter operates exactly as the first
+     *
+     *   To control the gate, a timer is configured to operate in PWM mode A.
+     *   With PWM mode, gate is closed while timer count is < than match register
+     *   otherwise is open. Enabling one cycle mode ensures a single control pulse,
+     *   and setting gate time is achieved by limiting maximum timer count.
+     *   When timer overflowes, it generates an interrupt on wich frequency is calculated
+     *   and forwared to application.
      * */
-    CLOCK_Enable(TMR2, ENABLE);
+    CLOCK_Enable(COUNTER_A, ENABLE);
+    CLOCK_Enable(COUNTER_B_LSB, ENABLE);
+    CLOCK_Enable(COUNTER_B_MSB, ENABLE);
+    CLOCK_Enable(TIMER_GATE, ENABLE);
+    /**
+     * Reference counter
+     * 32bit external clock counter.
+     * Slave mode: External clock mode B
+     * */
     // Enable 32bit with plus mode
-    TMR2->CTRL1 = TMR_CTRL1_PMEN;
+    COUNTER_A->CTRL1 = TMR_CTRL1_PMEN;
+    // Count 32bit
+    COUNTER_A->AR = 0xFFFFFFFF;
+    // Slave mode: External clock mode B
+    COUNTER_A->SMC = TMR_SMC_ECLKEN;
+
+    /**
+     * Input counter LSB 16bit.
+     * Slave mode: External clock mode B
+     * */
+    // Clear configuration
+    COUNTER_B_LSB->CTRL1 = 0;
+    // Count 16bit
+    COUNTER_B_LSB->AR = 0xFFFF;
+    // Slave mode: Count clocks on EXT pin, Enable Master
+    COUNTER_B_LSB->SMC = TMR_SMC_ECLKEN | TMR_SMC_MSMODE;
+    // Master output, Update for timer cascading
+    COUNTER_B_LSB->CTRL2 = TMR_CTRL2_MMSEL_UPDATE;
+
+    /**
+     * Input counter MSB 16bit.
+     * Slave mode: External clock mode A
+     */
+    // Clear configuration
+    COUNTER_B_MSB->CTRL1 = 0;
+    // Count 16bit
+    COUNTER_B_MSB->AR = 0xFFFF;
+    // Slave mode: External clock from IS0
+    COUNTER_B_MSB->SMC = TMR_SMC_SMSEL_EXT |
+                        TMR_SMC_TRGSEL_IS0 ;
+
+    /**
+     * Gate timer
+     */
+    // One pulse mode
+    TIMER_GATE->CTRL1 = TMR_CTRL1_OPMODE;
+    // Count units of 4ms
+    TIMER_GATE->DIV = (CLOCK_Get(CLOCK_CLK4) / 4000) - 1;
+    // Count 16bit, Gate time
+    TIMER_GATE->AR = 100 << 2;
+    TIMER_GATE->CC1 = 1;
+    // Enable Master to enable TIMER_REF
+    //TIMER_GATE->SMC = TMR_SMC_MSMODE;
+    // Master output, CxORAW
+    //TIMER_GATE->CTRL2 = TMR_CTRL2_MMSEL_C1ORAW;
+    // Compare mode, CxORAW high when CNT == CCx
+    TIMER_GATE->CCM1 = TMR_CCM1_C1OCTRL_PWMA;
+    // Enable channel, Invert pulse
+    TIMER_GATE->CCE = TMR_CCE_C1EN | TMR_CCE_C1P;
+
+    // Enable counting
+    COUNTER_A->CTRL1 |= TMR_CTRL1_CNTEN;
+    COUNTER_B_LSB->CTRL1 |= TMR_CTRL1_CNTEN;
+    COUNTER_B_MSB->CTRL1 |= TMR_CTRL1_CNTEN;
+    TIMER_GATE->CTRL1 |= TMR_CTRL1_CNTEN;
+
+    // Enable interrupt
+    NVIC_EnableIRQ(TMR1_OV_TMR10_IRQn);
+    #else
+   /**
+    *  Direct count implementation.
+    *   A timer is configured for counting external clocks using
+    *   EXT input. Each rising edge increments counter and
+    *   a stable external 1Hz triggers capture of the counter.
+    *
+    *   Each capture triggers an interrupt that reads captured value
+    *   and pass the difference between captured values to a callback
+    *
+    * */
+
+    /**
+     * Configure 32bit counter with external clock counter
+     * */
+    CLOCK_Enable(COUNTER_A, ENABLE);
+    // Enable 32bit with plus mode
+    COUNTER_A->CTRL1 = TMR_CTRL1_PMEN;
     // Slave mode, external clock mode B
-    TMR2->SMC = TMR_SMC_ECLKEN |
+    COUNTER_A->SMC = TMR_SMC_ECLKEN |
                 TMR_SMC_SMSEL_EXT |
                 TMR_SMC_TRGSEL_EXT;
     // Count 32bit
-    TMR2->AR = 0xFFFFFFFF;
+    COUNTER_A->AR = 0xFFFFFFFF;
     // Start counting
-    TMR2->CTRL1 |= TMR_CTRL1_CNTEN;
+    COUNTER_A->CTRL1 |= TMR_CTRL1_CNTEN;
 
     /**
      * Configure capture mode with interrupt
      * */
-    TMR2->CCM1 = TMR_CCM1_C2C_C1IFP1;
+    COUNTER_A->CCM1 = TMR_CCM1_C2C_C2IFP2;
     // Generate interrupt on capture
-    TMR2->DIE = TMR_DIE_C2IE;
+    COUNTER_A->DIE = TMR_DIE_C2IE;
     // Enable interrupt
     NVIC_EnableIRQ(TMR2_GLOBAL_IRQn);
+    #endif
     return 1;
 }
+
 /**
  * @brief
  * @param cb
  */
-void countStart(void (*cb)(uint32_t))
+void countEocSet(void(*cb)(countres_t))
 {
     if(cb){
         counterHandler = cb;
-        TMR2->CCE = TMR_CCE_C2EN;
+        // Generate interrupt on capture
+        TIMER_GATE->DIE = TMR_DIE_UEVIE;
+    }else{
+        TIMER_GATE->DIE = 0;
+    }
+}
+
+/**
+ * @brief
+ * @param cb
+ */
+void countStart(void)
+{
+    if(counterHandler){
+        #ifdef ENABLE_COUNT_RECIPROCAL
+        TIMER_GATE->CTRL1 |= TMR_CTRL1_CNTEN;
+        #else
+        COUNTER_A->CCE = TMR_CCE_C2EN;
+        #endif
     }
 }
 
 void countStop(void)
 {
-    TMR2->CCE = 0;
+    #ifdef ENABLE_COUNT_RECIPROCAL
+    #else
+    COUNTER_A->CCE = 0;
+    #endif
+}
+
+/**
+ * @brief Set Gate time
+ * @param ms    100ms to 16000ms
+ */
+void countGateTimeSet(uint32_t ms)
+{
+    #ifdef ENABLE_COUNT_RECIPROCAL
+    TIMER_GATE->AR = ms << 2;
+    #else
+    (void)ms;
+    #endif
 }
 #endif
 
@@ -569,6 +756,8 @@ int main(void)
     // Enable gpio peripherals
     RCC->APB2EN |= RCC_APB2EN_GPIOAEN | RCC_APB2EN_GPIOBEN |
                    RCC_APB2EN_GPIOCEN | RCC_APB2EN_GPIOFEN | RCC_APB2EN_AFIOEN;
+
+    AFIO->MAP = AFIO_MAP_SWJTAG_CONF_JTAGDISABLE;
     // Configure basic gpio
     LED_INIT;
 #ifdef ENABLE_DEBUG
@@ -702,8 +891,35 @@ void SysTick_Handler(void)
 
 void TMR2_GLOBAL_IRQHandler(void)
 {
-    uint32_t cap = TMR2->CC2;
-    TMR2->STS = 0;
-    counterHandler(cap - count_last_cap);
-    count_last_cap = cap;
+    uint32_t Nx = COUNTER_A->CC2;
+    COUNTER_A->STS = 0;
+    counterHandler(Nx - count_last_cap);
+    count_last_cap = Nx;
 }
+
+#ifdef ENABLE_COUNT_RECIPROCAL
+void TMR1_OV_TMR10_IRQHandler(void)
+{
+    countres_t Ns = COUNTER_A->CNT;
+    countres_t Nx = (COUNTER_B_MSB->CNT << 16) | COUNTER_B_LSB->CNT;
+
+    /**
+     * fx = Nx/Ns * Fs
+     *
+     * Fs = Frequency of standard (10MHz)
+     *
+     */
+
+    countres_t count = Nx/Ns * 10000000UL;
+
+    // Reset timers
+    COUNTER_A->EVEG = TMR_EVEG_UEVG;
+    COUNTER_B_LSB->EVEG = TMR_EVEG_UEVG;
+    COUNTER_B_LSB->STS = 0;
+    COUNTER_B_MSB->EVEG = TMR_EVEG_UEVG;
+    COUNTER_B_MSB->STS = 0;
+    TIMER_GATE->STS = 0;
+
+    counterHandler(count);
+}
+#endif

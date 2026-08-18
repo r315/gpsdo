@@ -35,12 +35,12 @@ static void tdcHandler(int32_t val)
 #endif
 
 #ifdef ENABLE_COUNT
-static uint32_t cur_count;
+static countres_t count;
 static uint8_t led_color;
 
-static void countHandler(uint32_t count)
+static void countHandler(countres_t cnt)
 {
-    cur_count = count;
+    count = cnt;
     sys_flags |= SYS_FLAG_LOG_COUNT;
 }
 #endif
@@ -421,6 +421,14 @@ static int sysCmd(int argc, char **argv)
         return CLI_OK;
     }
 
+    if(CLI_IS_PARM(1, "count")){
+        if(CLI_IS_PARM(2, "start")){
+            countEocSet(countHandler);
+            countStart();
+            return CLI_OK;
+        }
+    }
+
     if(CLI_IS_PARM(1, "log")){
         if(CLI_IS_PARM(2, "temp")){
             if(CLI_IS_PARM(3, "1")){
@@ -442,7 +450,8 @@ static int sysCmd(int argc, char **argv)
         #ifdef ENABLE_COUNT
         if(CLI_IS_PARM(2, "count")){
             if(argv[3][0] == '1'){
-                countStart(countHandler);
+                countEocSet(countHandler);
+                countStart();
             }else{
                 countStop();
             }
@@ -610,8 +619,14 @@ void app(void)
 
             #ifdef ENABLE_COUNT
             if(sys_flags & SYS_FLAG_LOG_COUNT){
-                //printf("\2C%ld\3", cur_count);
-                printf("\r%ld ", cur_count);
+                #ifdef ENABLE_COUNT_RECIPROCAL
+                printf("\r%d", (int)count);
+                count = (int)(count * 1000) % 1000;
+                printf(".%d ", (int)count);
+                #else
+                //printf("\2C%ld\3", count);
+                printf("\r%ld ", count);
+                #endif
                 led_color = (led_color < 6) ? led_color + 1 : 1;
                 ledSet(LED_RGB, led_color);
                 sys_flags &= ~SYS_FLAG_LOG_COUNT;

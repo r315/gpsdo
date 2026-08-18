@@ -254,6 +254,7 @@ void board_init(void)
 
     dacInit();
     adc_init();
+    //countInit();
 }
 
 void board_reset(void)
@@ -375,7 +376,7 @@ exit:
  *
  * @param cb callback for capture with captured value
  */
-void countStart(void(*cb)(uint32_t))
+static void countInit(void)
 {
     counter_cb = cb;
 
@@ -441,6 +442,16 @@ void countStart(void(*cb)(uint32_t))
     TMR5->DMAINTEN =
         TIMER_DMAINTEN_UPIE; // Interrut on update event
     NVIC_EnableIRQ(TIMER5_IRQn);
+}
+
+void countEocSet(void(*cb)(uint32_t))
+{
+
+}
+
+void countStart(void)
+{
+
 }
 
 void countStop(void)
