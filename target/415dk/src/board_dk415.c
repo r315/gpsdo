@@ -29,6 +29,7 @@
 #define COUNTER_B_LSB           TMR1
 #define COUNTER_B_MSB           TMR3
 #define COUNTER_A               TMR2
+#define TIMER_PPS               TMR9
 
 #define ADC_STATUS_RDY          (1 << 0)
 #define ADC_STATUS_DIV          (1 << 1)
@@ -792,6 +793,7 @@ int main(void)
 
     // Configure cpu and bus clock's
     SystemConfigClockSrc(RCC_CFG_SYSCLKSEL_HSI);
+    RCC->CTRL |= RCC_CTRL_HSEBYPS;  // Bypass oscillator
     uint32_t sclk = SystemConfigPll(RCC_CFG_PLLRC_HSE, HSE_VALUE, 150000000);
 
     if (sclk)
