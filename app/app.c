@@ -411,7 +411,7 @@ static int sysCmd(int argc, char **argv)
         int32_t src, div;
         #ifdef BOARD_DK415
         if(CLI_GET_INT_PARM(2, src) && CLI_GET_INT_PARM(3, div)){
-            mco(src, div << 4);
+            mco(src, div);
         }
         #else
         if(CLI_GET_INT_PARM(2, src)){

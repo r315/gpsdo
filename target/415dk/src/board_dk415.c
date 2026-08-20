@@ -30,6 +30,7 @@
 #define COUNTER_B_MSB           TMR3
 #define COUNTER_A               TMR2
 #define TIMER_PPS               TMR9
+#define TIMER_DAC               TMR11
 
 #define ADC_STATUS_RDY          (1 << 0)
 #define ADC_STATUS_DIV          (1 << 1)
@@ -185,7 +186,7 @@ void delayMs(uint32_t ms)
 
 void mco(enum mco_src src, enum mco_div div)
 {
-    CLOCK_Output(div | src);
+    CLOCK_Output((div << 4) | src);
 }
 
 void ledSet(enum led_tag tag, uint8_t state)
@@ -314,11 +315,12 @@ uint32_t countInit(void)
     #ifndef ENABLE_COUNT_DIREC
     GPIO_Config(PB_8, GPO_HS_AF);
     GPIO_Config(PA_0, GPIO_REMAP_PA0_TMR1_EXT);
-    #endif
+    #endif /* ENABLE_COUNT_DIREC */
     #else
     GPIO_Config(PA_0, GPI_PD);
     GPIO_Config(PA_1, GPI_PD);
-    #endif
+    #endif /* BOARD_DK415 */
+
     #ifdef ENABLE_COUNT_RECIPROCAL
     /**
      *  Reciprocal count implementation.
@@ -443,7 +445,7 @@ uint32_t countInit(void)
     COUNTER_A->DIE = TMR_DIE_C2IE;
     // Enable interrupt
     NVIC_EnableIRQ(TMR2_GLOBAL_IRQn);
-    #endif
+    #endif /* ENABLE_COUNT_RECIPROCAL */
     return 1;
 }
 
@@ -569,7 +571,7 @@ static uint32_t ppsInit(void)
     TIMER_PPS->CTRL1 = TMR_CTRL1_CNTEN;
     // Config output pin
     GPIO_Config(PA_2, GPO_HS_AF);
-    #endif
+    #endif /* ENABLE_PPS_RTC */
     return 1;
 }
 #endif
@@ -582,19 +584,19 @@ static uint32_t ppsInit(void)
  */
 static void dacInit(void)
 {
-    CLOCK_Enable(PWM_TIM, ENABLE);
+    CLOCK_Enable(TIMER_DAC, ENABLE);
 
-    PWM_TIM->CTRL1 = 0;
-    PWM_TIM->DIV = (CLOCK_Get(CLOCK_CLK4) / 1000000) - 1;   // 1MHz clock, counts units of 1us
-    PWM_TIM->AR = DAC_MAX_VAL;
+    TIMER_DAC->CTRL1 = 0;
+    TIMER_DAC->DIV = (CLOCK_Get(CLOCK_CLK4) / 1000000) - 1;   // 1MHz clock, counts units of 1us
+    TIMER_DAC->AR = DAC_MAX_VAL;
 
-    PWM_TIM->CCM1 = (6 << 4);
-    PWM_TIM->CCE = TMR_CCE_C1EN;
+    TIMER_DAC->CCM1 = (6 << 4);
+    TIMER_DAC->CCE = TMR_CCE_C1EN;
 
-    PWM_TIM->CC1 = PWM_TIM->AR >> 2;    // 25%
+    TIMER_DAC->CC1 = TIMER_DAC->AR >> 2;    // 25%
 
     // Enable timer
-    PWM_TIM->CTRL1 = TMR_CTRL1_CNTEN;
+    TIMER_DAC->CTRL1 = TMR_CTRL1_CNTEN;
 }
 
 void dacEnable(uint8_t en)
@@ -604,12 +606,12 @@ void dacEnable(uint8_t en)
 
 uint16_t dacValueGet()
 {
-    return PWM_TIM->CC1;
+    return TIMER_DAC->CC1;
 }
 
 void dacValueSet(uint16_t val)
 {
-    PWM_TIM->CC1 = val & DAC_MAX_VAL;
+    TIMER_DAC->CC1 = val & DAC_MAX_VAL;
 }
 #endif
 

@@ -57,7 +57,6 @@ extern "C" {
 
 #define board_reset             NVIC_SystemReset
 
-#define PWM_TIM                 TMR11
 #define DAC_MAX_VAL             0x0FFF      // 12bit DAC
 
 #define ADC_CHANNEL_4           4
@@ -85,6 +84,12 @@ extern "C" {
 #define ADC_SEQ_4               ADC_CHANNEL_INTRV
 #define ADC_SEQ_LEN             4
 
+/* IO Pins */
+#define CLK_SEL                 PB_5
+#define CNT_SEL                 PB_4
+#define PPS_SEL                 PC_13
+#define GPS_EN                  PB_9
+
 enum led_tag{
     LED_PPS = 0,
     LED_LOCK,
@@ -100,7 +105,7 @@ enum mco_src {
     MCO_HICK,
     MCO_HEXT,
     MCO_PLL_2,
-    MCO_PLL_4,
+    MCO_PLL_4 = 12,
     MCO_USB,
     MCO_ADC
 };
