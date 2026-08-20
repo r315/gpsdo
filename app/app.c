@@ -25,15 +25,6 @@ static uint32_t sys_tick_ms;
 static uint8_t i2c_device_addr;
 #endif
 
-#ifdef ENABLE_CLI
-
-#ifdef ENABLE_TDC
-static void tdcHandler(int32_t val)
-{
-    printf("%ld\n", val);
-}
-#endif
-
 #ifdef ENABLE_COUNT
 static countres_t count;
 static uint8_t led_color;
@@ -44,6 +35,7 @@ static void countHandler(countres_t cnt)
     sys_flags |= SYS_FLAG_LOG_COUNT;
 }
 #endif
+#ifdef ENABLE_CLI
 
 #ifdef ENABLE_I2C
 static int i2cCmd(int argc, char **argv)
@@ -163,29 +155,6 @@ static int clearCmd(int argc, char **argv)
     return CLI_OK;
 }
 
-#ifdef ENABLE_TDC
-static int tdcCmd(int argc, char **argv)
-{
-    if(argc == 1 || CLI_IS_PARM(1, "help")){
-        printf("Usage: tdc [args]\n");
-        printf("  start\n");
-        printf("  stop\n");
-        return CLI_OK_LF;
-    }
-
-    if(!strcmp("start", argv[1])){
-        tdc_start(tdcHandler);
-        return CLI_OK;
-    }
-
-    if(!strcmp("stop", argv[1])){
-        tdc_stop();
-        return CLI_OK;
-    }
-
-    return CLI_OK;
-}
-#endif
 
 #if ENABLE_CLOCK_GEN
 static int clockCmd(int argc, char **argv)
@@ -540,9 +509,6 @@ cli_command_t cli_cmds [] = {
 #if ENABLE_CLOCK_GEN
     {"pll", pllCmd},
 #endif
-#ifdef ENABLE_TDC
-    {"tdc", tdcCmd},
-#endif
 #ifdef ENABLE_PPS
     {"pps", ppsCmd},
 #endif
@@ -572,7 +538,13 @@ static float tempRead(void)
     return temp_k - 273.15f;
 }
 
-
+/**
+ * @brief
+ * @param start
+ * @param mid
+ * @param end
+ * @param len
+ */
 static void titleLine(char start, char mid, char end, uint8_t len)
 {
     putchar(start);
@@ -580,6 +552,7 @@ static void titleLine(char start, char mid, char end, uint8_t len)
         putchar(mid);
     putchar(end);
 }
+
 /**
   * @brief  main function.
   * @param  none
