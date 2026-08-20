@@ -559,18 +559,18 @@ static uint32_t ppsInit(void)
     TIMER_PPS->CTRL1 = 0;
     // Div by 10000, Ftmr = 10kHz
     TIMER_PPS->DIV = (CLOCK_Get(CLOCK_CLK4) / 10000UL) - 1;
-    // Div again by 5000, Fout = 2Hz
-    TIMER_PPS->AR = 5000 - 1;
-    // Toggle output on match, this also divides by 2
-    TIMER_PPS->CCM1 = TMR_CCM1_C1OCTRL_C1ORAW_TOGGLE;
+    // Div again by 10000 for 1Hz
+    TIMER_PPS->AR = 10000 - 1;
+    // Use PWM mode A
+    TIMER_PPS->CCM1 = TMR_CCM1_C2OCTRL_PWMA;
     // Set 50% duty
-    TIMER_PPS->CC1 = TIMER_PPS->AR >> 1;
+    TIMER_PPS->CC2 = TIMER_PPS->AR >> 1;
     // Enable channel
-    TIMER_PPS->CCE = TMR_CCE_C1EN;
+    TIMER_PPS->CCE = TMR_CCE_C2EN;
     // Enable timer
     TIMER_PPS->CTRL1 = TMR_CTRL1_CNTEN;
     // Config output pin
-    GPIO_Config(PA_2, GPO_HS_AF);
+    GPIO_Config(PA_3, GPO_HS_AF);
     #endif /* ENABLE_PPS_RTC */
     return 1;
 }
