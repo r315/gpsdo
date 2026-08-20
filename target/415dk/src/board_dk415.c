@@ -158,6 +158,10 @@ static adc_t hadc;
 #ifdef ENABLE_IOEXPANDER
 static ioexp_t *ioexp = &pcf8574_ioexp;
 #endif
+
+#ifdef ENABLE_PPS
+static void (*ppsHandler)(void);
+#endif
 /**
  * @brief Initialyze system time bases
  * */
@@ -582,12 +586,20 @@ static uint32_t ppsInit(void)
  */
 void ppsPulseSet(uint16_t unit)
 {
+    #ifdef ENABLE_PPS_RTC
+    (void)unit;
+    #else
     if(unit < TIMER_PPS->AR)
         TIMER_PPS->CC2 = unit;
+    #endif
 }
 
 /**
  * @brief Synchronizes pps with external sync pulse
+ * This implementation does not control prescaller,
+ * meaning that exact timer start is dependent of current
+ * prescaller count thus creating a delay between 0 and 100us
+ *
  * @param
  */
 void ppsSync(void)
@@ -595,13 +607,24 @@ void ppsSync(void)
     #ifndef ENABLE_PPS_RTC
     GPIO_Config(PA_2, GPI_PD);
     // Stop timer
-    TIMER_PPS->CTRL1 = 0;
+    TIMER_PPS->CTRL1 &= ~TMR_CTRL1_CNTEN;
     // Reset counter
-    TIMER_PPS->CNT = 0;
-    // Slave mode: Start on trigger (Rising edge of PA2)
+    TIMER_PPS->EVEG = TMR_EVEG_UEVG;
+    // Slave mode: Start on trigger (Rising edge on PA2)
     TIMER_PPS->SMC = TMR_SMC_SMSEL_TRG |
                      TMR_SMC_TRGSEL_C1IF1;
     #endif
+}
+
+void ppsInt(void (*cb)(void))
+{
+    if(cb){
+        ppsHandler = cb;
+        TIMER_PPS->DIE = TMR_DIE_UEVIE;
+        NVIC_EnableIRQ(TMR1_BRK_TMR9_IRQn);
+    }else{
+        TIMER_PPS->DIE = 0;
+    }
 }
 #endif
 
@@ -980,5 +1003,13 @@ void TMR1_OV_TMR10_IRQHandler(void)
     TIMER_GATE->STS = 0;
 
     counterHandler(count);
+}
+#endif
+
+#ifdef ENABLE_PPS
+void TMR1_BRK_TMR9_IRQHandler(void)
+{
+    TIMER_PPS->STS = 0;
+    ppsHandler();
 }
 #endif

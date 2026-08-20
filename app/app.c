@@ -17,6 +17,7 @@
 #define SYS_FLAG_LOG_TEMP     (1 << 0)
 #define SYS_FLAG_LOG_VREFINT  (1 << 1)
 #define SYS_FLAG_LOG_COUNT    (1 << 2)
+#define SYS_FLAG_PPS          (1 << 3)
 
 static uint32_t sys_flags;
 static uint32_t next_tick;
@@ -27,7 +28,6 @@ static uint8_t i2c_device_addr;
 
 #ifdef ENABLE_COUNT
 static countres_t count;
-static uint8_t led_color;
 
 static void countHandler(countres_t cnt)
 {
@@ -35,6 +35,16 @@ static void countHandler(countres_t cnt)
     sys_flags |= SYS_FLAG_LOG_COUNT;
 }
 #endif
+
+static void ppsLedHandler(void)
+{
+    #ifdef ENABLE_I2C
+    static uint8_t pps_led_color;
+    pps_led_color = (pps_led_color < 6) ? pps_led_color + 1 : 1;
+    ledSet(LED_RGB, pps_led_color);
+    #endif
+}
+
 #ifdef ENABLE_CLI
 
 #ifdef ENABLE_I2C
@@ -373,6 +383,7 @@ static int ppsCmd(int argc, char **argv)
         printf("Usage: pps [args]\n");
         printf("  sync          Sync pps with external pps\n");
         printf("  pulse <val>   pulse width in units os 100us\n");
+        printf("  int           attach interrupt to pps\n");
         return CLI_OK;
     }
 
@@ -386,6 +397,11 @@ static int ppsCmd(int argc, char **argv)
         if(CLI_GET_INT_PARM(2, unit)){
             ppsPulseSet(unit);
         }
+        return CLI_OK;
+    }
+
+    if(CLI_IS_PARM_1("int")){
+        ppsInt(ppsLedHandler);
         return CLI_OK;
     }
 
@@ -483,6 +499,10 @@ static int helpCmd(int argc, char **argv)
 #ifdef ENABLE_GPS
     printf("  gps     gps subsystem\n");
 #endif
+#ifdef ENABLE_PPS
+    printf("  pps     pps subsystem\n");
+#endif
+
 
     putchar('\n');
 
@@ -630,11 +650,15 @@ void app(void)
                 //printf("\2C%ld\3", count);
                 printf("\r%ld ", count);
                 #endif
-                led_color = (led_color < 6) ? led_color + 1 : 1;
-                ledSet(LED_RGB, led_color);
-                sys_flags &= ~SYS_FLAG_LOG_COUNT;
+                sys_flags = (sys_flags & ~SYS_FLAG_LOG_COUNT) | SYS_FLAG_PPS;
             }
             #endif
+
+            if(sys_flags & SYS_FLAG_PPS){
+                ppsLedHandler();
+                sys_flags = (sys_flags & ~SYS_FLAG_PPS);
+            }
+
             next_tick = millis() + sys_tick_ms;
         }
 
