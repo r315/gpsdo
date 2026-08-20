@@ -165,6 +165,8 @@ int32_t adcVoltageGet(uint8_t ch);
 
 #ifdef ENABLE_PPS
 void ppsSelect(uint8_t input);
+void ppsSync(void);
+void ppsPulseSet(uint16_t unit);
 #endif
 
 #ifdef ENABLE_TERMISTOR

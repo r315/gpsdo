@@ -574,6 +574,35 @@ static uint32_t ppsInit(void)
     #endif /* ENABLE_PPS_RTC */
     return 1;
 }
+
+/**
+ * @brief Sets pulse width in units of
+ * 1/10 ms
+ * @param unit number of 100us units
+ */
+void ppsPulseSet(uint16_t unit)
+{
+    if(unit < TIMER_PPS->AR)
+        TIMER_PPS->CC2 = unit;
+}
+
+/**
+ * @brief Synchronizes pps with external sync pulse
+ * @param
+ */
+void ppsSync(void)
+{
+    #ifndef ENABLE_PPS_RTC
+    GPIO_Config(PA_2, GPI_PD);
+    // Stop timer
+    TIMER_PPS->CTRL1 = 0;
+    // Reset counter
+    TIMER_PPS->CNT = 0;
+    // Slave mode: Start on trigger (Rising edge of PA2)
+    TIMER_PPS->SMC = TMR_SMC_SMSEL_TRG |
+                     TMR_SMC_TRGSEL_C1IF1;
+    #endif
+}
 #endif
 
 #ifdef ENABLE_DAC
