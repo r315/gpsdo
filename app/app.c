@@ -397,6 +397,33 @@ static int oscCmd(int argc, char **argv)
 }
 #endif
 
+#ifdef ENABLE_PPS
+static int ppsCmd(int argc, char **argv)
+{
+    if(CLI_IS_PARM_1("help") || argc == 1){
+        printf("Usage: pps [args]\n");
+        printf("  sync          Sync pps with external pps\n");
+        printf("  pulse <val>   pulse width in units os 100us\n");
+        return CLI_OK;
+    }
+
+    if(CLI_IS_PARM_1("sync")){
+        ppsSync();
+        return CLI_OK;
+    }
+
+    if(CLI_IS_PARM_1("pulse")){
+        int32_t unit;
+        if(CLI_GET_INT_PARM(2, unit)){
+            ppsPulseSet(unit);
+        }
+        return CLI_OK;
+    }
+
+    return CLI_BAD_PARAM;
+}
+#endif
+
 static int sysCmd(int argc, char **argv)
 {
     if(CLI_IS_PARM(1, "help") || argc == 1){
@@ -515,6 +542,9 @@ cli_command_t cli_cmds [] = {
 #endif
 #ifdef ENABLE_TDC
     {"tdc", tdcCmd},
+#endif
+#ifdef ENABLE_PPS
+    {"pps", ppsCmd},
 #endif
 };
 #endif /* ENABLE_CLI */
