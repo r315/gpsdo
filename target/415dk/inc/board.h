@@ -170,6 +170,10 @@ void ppsPulseSet(uint16_t unit);
 void ppsInt(void (*cb)(void));
 #endif
 
+#ifdef ENABLE_GPS
+void gpsEnableSet(uint8_t en);
+#endif
+
 #ifdef ENABLE_TERMISTOR
 #endif
 

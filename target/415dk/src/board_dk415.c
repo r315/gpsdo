@@ -836,6 +836,19 @@ int32_t adcVoltageGet(uint8_t ch)
 }
 #endif
 
+#ifdef ENABLE_GPS
+
+/**
+ * @brief
+ * @param en
+ */
+void gpsEnableSet(uint8_t en)
+{
+    GPIO_Write(GPS_EN, en);
+}
+
+#endif
+
 int main(void)
 {
     // Enable gpio peripherals
@@ -862,6 +875,8 @@ int main(void)
 
     uart1.bus = UART_BUS0;
     uart1.speed = 115200;
+    uart1.cfg_gpio = 1;
+
     UART_Init(&uart1);
     uart1_write("\e[2J\r", 5);
 
@@ -941,6 +956,16 @@ int main(void)
 #ifdef ENABLE_COUNT
     countInit();
     DBG_BOARD_INF("Fcount Initialized");
+#endif
+
+#ifdef ENABLE_GPS
+    uart2.bus = UART_BUS2;
+    uart2.speed = 9600;
+    uart2.cfg_gpio = 1;
+
+    UART_Init(&uart2);
+    GPIO_Config(GPS_EN, GPO_LS);
+    GPIO_Write(GPS_EN, GPIO_PIN_LOW);
 #endif
 
     /* Log reset reason
