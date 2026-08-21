@@ -663,7 +663,11 @@ uint16_t dacValueGet()
 
 void dacValueSet(uint16_t val)
 {
-    TIMER_DAC->CC1 = val & DAC_MAX_VAL;
+    if(val > DAC_MAX_VAL){
+        return;
+    }
+
+    TIMER_DAC->CC1 = val;
 }
 #endif
 
