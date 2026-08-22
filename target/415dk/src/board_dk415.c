@@ -626,7 +626,7 @@ void ppsInt(void (*cb)(void))
         TIMER_PPS->DIE = 0;
     }
 }
-#endif
+#endif /* ENABLE_PPS */
 
 #ifdef ENABLE_DAC
 /**

@@ -17,11 +17,13 @@
 #define SYS_FLAG_LOG_TEMP     (1 << 0)
 #define SYS_FLAG_LOG_VREFINT  (1 << 1)
 #define SYS_FLAG_LOG_COUNT    (1 << 2)
-#define SYS_FLAG_PPS          (1 << 3)
+#define SYS_FLAG_LOG_GPS      (1 << 3)
+#define SYS_FLAG_PPS          (1 << 4)
 
 static uint32_t sys_flags;
 static uint32_t next_tick;
 static uint32_t sys_tick_ms;
+
 #ifdef ENABLE_I2C
 static uint8_t i2c_device_addr;
 #endif
@@ -633,6 +635,11 @@ void app(void)
     sys_tick_ms = 500;
 
     WDT_Init(3000);
+
+    #ifdef ENABLE_PPS
+    ppsInt(ppsLedHandler);
+    #endif
+
 
     while(1) {
 #ifdef ENABLE_CLI
