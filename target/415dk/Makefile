@@ -126,6 +126,7 @@ CONSOLE_WIDTH=128 \
 CONSOLE_SIMPLE_COMMAND \
 HSE_VALUE=10000000UL \
 $(VERSION) \
+"UNUSED(__X)=(void)__X" \
 
 #######################################
 # CFLAGS

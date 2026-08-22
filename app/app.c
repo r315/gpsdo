@@ -318,9 +318,18 @@ static int dacCmd(int argc, char **argv)
 #ifdef ENABLE_GPS
 static int gpsCmd(int argc, char **argv)
 {
-    (void)argc;(void)argv;
-    //gpsdo_log_gps_output(argv[1][0] == '1' ? 1 : 0);
-    return CLI_OK;
+    if(CLI_IS_PARM_1("help") || argc == 1){
+        printf("Usage: gps [args]\n");
+        printf("  en            enable gps module\n");
+        return CLI_OK;
+    }
+
+    if(CLI_IS_PARM_1("en")){
+        gpsEnableSet(argv[2][0] == '1');
+        return CLI_OK;
+    }
+
+    return CLI_BAD_PARAM;
 }
 #endif
 
@@ -470,6 +479,16 @@ static int sysCmd(int argc, char **argv)
             return CLI_OK;
         }
         #endif
+        #ifdef ENABLE_GPS
+        if(CLI_IS_PARM(2, "gps")){
+            if(argv[3][0] == '1'){
+                sys_flags |= SYS_FLAG_LOG_GPS;
+            }else{
+                sys_flags &= ~SYS_FLAG_LOG_GPS;
+            }
+            return CLI_OK;
+        }
+        #endif
     }
 
     return CLI_BAD_PARAM;
@@ -602,7 +621,6 @@ void app(void)
     putchar('\n');
     #endif
 
-    //div_start(10000000);
     #ifdef ENABLE_GPS
     gpsInit(&gps_serial);
     #endif
@@ -617,18 +635,40 @@ void app(void)
     WDT_Init(3000);
 
     while(1) {
-        #ifdef ENABLE_GPS
-        gpsProcess();
-        #endif
-
-        #ifdef ENABLE_CLI
+#ifdef ENABLE_CLI
         if(CLI_ReadLine()){
             CLI_HandleLine();
         }
-        #endif
+#endif
+
+        if(sys_flags & SYS_FLAG_PPS){
+            ppsLedHandler();
+            sys_flags = (sys_flags & ~SYS_FLAG_PPS);
+        }
+
+        if(sys_flags & SYS_FLAG_LOG_GPS){
+            const char *sentence = nmeaSentenceGet();
+            if(sentence){
+                printf("%s", sentence);
+            }
+        }
+
+#ifdef ENABLE_COUNT
+        if(sys_flags & SYS_FLAG_LOG_COUNT){
+            #ifdef ENABLE_COUNT_RECIPROCAL
+            printf("\r%d", (int)count);
+            count = (int)(count * 1000) % 1000;
+            printf(".%d ", (int)count);
+            #else
+            //printf("\2C%ld\3", count);
+            printf("\r%ld ", count);
+            #endif
+            sys_flags = (sys_flags & ~SYS_FLAG_LOG_COUNT) | SYS_FLAG_PPS;
+        }
+#endif
 
         if(millis() > next_tick){
-            #ifdef ENABLE_ADC
+#ifdef ENABLE_ADC
             if(sys_flags & SYS_FLAG_LOG_TEMP){
                 float temp = tempRead();
                 printf("\rTemp %d.%d ", (int)temp, (int)(temp*10)%10);
@@ -638,27 +678,7 @@ void app(void)
                 printf("Vrefint %ldmV", adcVoltageGet(ADC_CHANNEL_INTRV));
             }
             adcConversionStart(FALSE);
-            #endif
-
-            #ifdef ENABLE_COUNT
-            if(sys_flags & SYS_FLAG_LOG_COUNT){
-                #ifdef ENABLE_COUNT_RECIPROCAL
-                printf("\r%d", (int)count);
-                count = (int)(count * 1000) % 1000;
-                printf(".%d ", (int)count);
-                #else
-                //printf("\2C%ld\3", count);
-                printf("\r%ld ", count);
-                #endif
-                sys_flags = (sys_flags & ~SYS_FLAG_LOG_COUNT) | SYS_FLAG_PPS;
-            }
-            #endif
-
-            if(sys_flags & SYS_FLAG_PPS){
-                ppsLedHandler();
-                sys_flags = (sys_flags & ~SYS_FLAG_PPS);
-            }
-
+#endif
             next_tick = millis() + sys_tick_ms;
         }
 
