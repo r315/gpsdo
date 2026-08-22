@@ -38,6 +38,7 @@ static void countHandler(countres_t cnt)
 }
 #endif
 
+#ifdef ENABLE_PPS
 static void ppsLedHandler(void)
 {
     #ifdef ENABLE_I2C
@@ -46,6 +47,7 @@ static void ppsLedHandler(void)
     ledSet(LED_RGB, pps_led_color);
     #endif
 }
+#endif
 
 #ifdef ENABLE_CLI
 
@@ -322,7 +324,7 @@ static int gpsCmd(int argc, char **argv)
 {
     if(CLI_IS_PARM_1("help") || argc == 1){
         printf("Usage: gps [args]\n");
-        printf("  en            enable gps module\n");
+        printf("  en <0|1>      Enable gps module\n");
         return CLI_OK;
     }
 
@@ -443,15 +445,20 @@ static int sysCmd(int argc, char **argv)
         #endif
         return CLI_OK;
     }
-
+#ifdef ENABLE_COUNT
     if(CLI_IS_PARM(1, "count")){
         if(CLI_IS_PARM(2, "start")){
             countEocSet(countHandler);
             countStart();
             return CLI_OK;
         }
-    }
 
+        if(CLI_IS_PARM(2, "cfg")){
+            countConfig(argv[3][0] == '1');
+            return CLI_OK;
+        }
+    }
+#endif
     if(CLI_IS_PARM(1, "log")){
         if(CLI_IS_PARM(2, "temp")){
             if(CLI_IS_PARM(3, "1")){
@@ -648,28 +655,27 @@ void app(void)
         }
 #endif
 
+#ifdef ENABLE_PPS
         if(sys_flags & SYS_FLAG_PPS){
             ppsLedHandler();
             sys_flags = (sys_flags & ~SYS_FLAG_PPS);
         }
+#endif
 
+#ifdef ENABLE_GPS
         if(sys_flags & SYS_FLAG_LOG_GPS){
             const char *sentence = nmeaSentenceGet();
             if(sentence){
                 printf("%s", sentence);
             }
         }
+#endif
 
 #ifdef ENABLE_COUNT
         if(sys_flags & SYS_FLAG_LOG_COUNT){
-            #ifdef ENABLE_COUNT_RECIPROCAL
             printf("\r%d", (int)count);
             count = (int)(count * 1000) % 1000;
             printf(".%d ", (int)count);
-            #else
-            //printf("\2C%ld\3", count);
-            printf("\r%ld ", count);
-            #endif
             sys_flags = (sys_flags & ~SYS_FLAG_LOG_COUNT) | SYS_FLAG_PPS;
         }
 #endif

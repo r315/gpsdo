@@ -137,15 +137,17 @@ enum count_sel {
     COUNT_SEL_EXT
 };
 
+enum count_cfg {
+    COUNT_CFG_RECIPROCAL = 0,
+    COUNT_CFG_DIRECT
+};
+
 typedef struct gpsdo_eep {
     uint32_t gps_serial_speed;
 }gpsdo_eep_t;
 
-#ifdef ENABLE_COUNT_RECIPROCAL
+
 typedef float countres_t;
-#else
-typedef uint32_t countres_t;
-#endif
 
 /* Global varaiables */
 extern stdinout_t cli_serial;
@@ -166,6 +168,7 @@ void countEocSet(void(*cb)(countres_t));
 void countGateTimeSet(uint32_t ms);
 void countStart(void);
 void countStop(void);
+uint32_t countConfig(enum count_cfg cfg);
 
 
 uint16_t i2cWrite(uint8_t dev_addr, const uint8_t *data, uint16_t size);

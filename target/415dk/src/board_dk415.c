@@ -143,7 +143,6 @@ static spibus_t hspi;
 #endif
 
 #ifdef ENABLE_COUNT
-static countres_t count_last_cap;
 static void (*counterHandler)(countres_t);
 #endif
 
@@ -306,6 +305,129 @@ uint8_t spiRead(void)
 #endif
 
 #ifdef ENABLE_COUNT
+uint32_t countConfig(enum count_cfg cfg)
+{
+    if(cfg == COUNT_CFG_DIRECT){
+        /**
+         *  Direct count implementation.
+         *   A timer is configured for counting external clocks using
+         *   EXT input. Each rising edge increments counter and
+         *   a stable external 1Hz triggers capture of the counter.
+         *
+         *   Each capture triggers an interrupt that reads captured value
+         *   and pass the difference between captured values to a callback
+         *
+         * */
+
+        /**
+         * Configure 32bit counter with external clock counter
+         * */
+        // Enable 32bit with plus mode
+        COUNTER_A->CTRL1 = TMR_CTRL1_PMEN;
+        // Slave mode, external clock mode B
+        COUNTER_A->SMC = TMR_SMC_ECLKEN |
+                    TMR_SMC_SMSEL_EXT |
+                    TMR_SMC_TRGSEL_EXT;
+        // Count 32bit
+        COUNTER_A->AR = 0xFFFFFFFF;
+        // Start counting
+        COUNTER_A->CTRL1 |= TMR_CTRL1_CNTEN;
+
+        /**
+         * Configure capture mode with interrupt
+         * */
+        COUNTER_A->CCM1 = TMR_CCM1_C2C_C2IFP2;
+        // Generate interrupt on capture
+        COUNTER_A->DIE = TMR_DIE_C2IE;
+        // Enable interrupt
+        NVIC_EnableIRQ(TMR2_GLOBAL_IRQn);
+    }else{
+        /**
+         *  Reciprocal count implementation.
+         *   This implementation requires an external FF and AND gate to perciselly
+         *   enable count. With this logic counting is started and stopped exactly
+         *   at input signal rising edges.
+         *
+         *   First counter is composed by a 32bit timer configured for counting
+         *   clocks using dedicated TMRx_EXT input. Count occurs at  rising edges
+         *   and only if gate is "open" by external control logic.
+         *
+         *   Secont counter is composed by two 16bit timers connected in cascade to
+         *   form a 32bit counter. This counter operates exactly as the first
+         *
+         *   To control the gate, a timer is configured to operate in PWM mode A.
+         *   With PWM mode, gate is closed while timer count is < than match register
+         *   otherwise is open. Enabling one cycle mode ensures a single control pulse,
+         *   and setting gate time is achieved by limiting maximum timer count.
+         *   When timer overflowes, it generates an interrupt on wich frequency is calculated
+         *   and forwared to application.
+         * */
+        /**
+         * Reference counter
+         * 32bit external clock counter.
+         * Slave mode: External clock mode B
+         * */
+        // Enable 32bit with plus mode
+        COUNTER_A->CTRL1 = TMR_CTRL1_PMEN;
+        // Count 32bit
+        COUNTER_A->AR = 0xFFFFFFFF;
+        // Slave mode: External clock mode B
+        COUNTER_A->SMC = TMR_SMC_ECLKEN;
+        // Disable any interrupt
+        COUNTER_A->DIE = 0;
+
+        /**
+         * Input counter LSB 16bit.
+         * Slave mode: External clock mode B
+         * */
+        // Clear configuration
+        COUNTER_B_LSB->CTRL1 = 0;
+        // Count 16bit
+        COUNTER_B_LSB->AR = 0xFFFF;
+        // Slave mode: Count clocks on EXT pin, Enable Master
+        COUNTER_B_LSB->SMC = TMR_SMC_ECLKEN | TMR_SMC_MSMODE;
+        // Master output, Update for timer cascading
+        COUNTER_B_LSB->CTRL2 = TMR_CTRL2_MMSEL_UPDATE;
+
+        /**
+         * Input counter MSB 16bit.
+         * Slave mode: External clock mode A
+         */
+        // Clear configuration
+        COUNTER_B_MSB->CTRL1 = 0;
+        // Count 16bit
+        COUNTER_B_MSB->AR = 0xFFFF;
+        // Slave mode: External clock from IS0
+        COUNTER_B_MSB->SMC = TMR_SMC_SMSEL_EXT |
+                            TMR_SMC_TRGSEL_IS0 ;
+
+        /**
+         * Gate timer
+         */
+        // One pulse mode
+        TIMER_GATE->CTRL1 = TMR_CTRL1_OPMODE;
+        // Count units of 4ms
+        TIMER_GATE->DIV = (CLOCK_Get(CLOCK_CLK4) / 4000) - 1;
+        // Count 16bit, Gate time
+        TIMER_GATE->AR = 100 << 2;
+        TIMER_GATE->CC1 = 1;
+        // Compare mode, CxORAW high when CNT > CCx
+        TIMER_GATE->CCM1 = TMR_CCM1_C1OCTRL_PWMA;
+        // Enable channel, Invert pulse
+        TIMER_GATE->CCE = TMR_CCE_C1EN | TMR_CCE_C1P;
+
+        // Enable counting
+        COUNTER_A->CTRL1 |= TMR_CTRL1_CNTEN;
+        COUNTER_B_LSB->CTRL1 |= TMR_CTRL1_CNTEN;
+        COUNTER_B_MSB->CTRL1 |= TMR_CTRL1_CNTEN;
+        TIMER_GATE->CTRL1 |= TMR_CTRL1_CNTEN;
+
+        // Enable interrupt
+        NVIC_EnableIRQ(TMR1_OV_TMR10_IRQn);
+    }
+
+    return 1;
+}
 /**
  * @brief   Frequency counter initialization
  * @param
@@ -313,144 +435,17 @@ uint8_t spiRead(void)
  */
 uint32_t countInit(void)
 {
-    #ifdef BOARD_DK415
     GPIO_Config(PA_15, GPIO_REMAP_PA15_TMR2_EXT);
-    GPIO_Config(PB_3, GPI_PD);
-    #ifndef ENABLE_COUNT_DIREC
-    GPIO_Config(PB_8, GPO_HS_AF);
     GPIO_Config(PA_0, GPIO_REMAP_PA0_TMR1_EXT);
-    #endif /* ENABLE_COUNT_DIREC */
-    #else
-    GPIO_Config(PA_0, GPI_PD);
-    GPIO_Config(PA_1, GPI_PD);
-    #endif /* BOARD_DK415 */
+    GPIO_Config(PB_3, GPI_PD);
+    GPIO_Config(PB_8, GPO_HS_AF);
 
-    #ifdef ENABLE_COUNT_RECIPROCAL
-    /**
-     *  Reciprocal count implementation.
-     *   This implementation requires an external FF and AND gate to perciselly
-     *   enable count. With this logic counting is started and stopped exactly
-     *   at input signal rising edges.
-     *
-     *   First counter is composed by a 32bit timer configured for counting
-     *   clocks using dedicated TMRx_EXT input. Count occurs at  rising edges
-     *   and only if gate is "open" by external control logic.
-     *
-     *   Secont counter is composed by two 16bit timers connected in cascade to
-     *   form a 32bit counter. This counter operates exactly as the first
-     *
-     *   To control the gate, a timer is configured to operate in PWM mode A.
-     *   With PWM mode, gate is closed while timer count is < than match register
-     *   otherwise is open. Enabling one cycle mode ensures a single control pulse,
-     *   and setting gate time is achieved by limiting maximum timer count.
-     *   When timer overflowes, it generates an interrupt on wich frequency is calculated
-     *   and forwared to application.
-     * */
     CLOCK_Enable(COUNTER_A, ENABLE);
     CLOCK_Enable(COUNTER_B_LSB, ENABLE);
     CLOCK_Enable(COUNTER_B_MSB, ENABLE);
     CLOCK_Enable(TIMER_GATE, ENABLE);
-    /**
-     * Reference counter
-     * 32bit external clock counter.
-     * Slave mode: External clock mode B
-     * */
-    // Enable 32bit with plus mode
-    COUNTER_A->CTRL1 = TMR_CTRL1_PMEN;
-    // Count 32bit
-    COUNTER_A->AR = 0xFFFFFFFF;
-    // Slave mode: External clock mode B
-    COUNTER_A->SMC = TMR_SMC_ECLKEN;
 
-    /**
-     * Input counter LSB 16bit.
-     * Slave mode: External clock mode B
-     * */
-    // Clear configuration
-    COUNTER_B_LSB->CTRL1 = 0;
-    // Count 16bit
-    COUNTER_B_LSB->AR = 0xFFFF;
-    // Slave mode: Count clocks on EXT pin, Enable Master
-    COUNTER_B_LSB->SMC = TMR_SMC_ECLKEN | TMR_SMC_MSMODE;
-    // Master output, Update for timer cascading
-    COUNTER_B_LSB->CTRL2 = TMR_CTRL2_MMSEL_UPDATE;
-
-    /**
-     * Input counter MSB 16bit.
-     * Slave mode: External clock mode A
-     */
-    // Clear configuration
-    COUNTER_B_MSB->CTRL1 = 0;
-    // Count 16bit
-    COUNTER_B_MSB->AR = 0xFFFF;
-    // Slave mode: External clock from IS0
-    COUNTER_B_MSB->SMC = TMR_SMC_SMSEL_EXT |
-                        TMR_SMC_TRGSEL_IS0 ;
-
-    /**
-     * Gate timer
-     */
-    // One pulse mode
-    TIMER_GATE->CTRL1 = TMR_CTRL1_OPMODE;
-    // Count units of 4ms
-    TIMER_GATE->DIV = (CLOCK_Get(CLOCK_CLK4) / 4000) - 1;
-    // Count 16bit, Gate time
-    TIMER_GATE->AR = 100 << 2;
-    TIMER_GATE->CC1 = 1;
-    // Enable Master to enable TIMER_REF
-    //TIMER_GATE->SMC = TMR_SMC_MSMODE;
-    // Master output, CxORAW
-    //TIMER_GATE->CTRL2 = TMR_CTRL2_MMSEL_C1ORAW;
-    // Compare mode, CxORAW high when CNT == CCx
-    TIMER_GATE->CCM1 = TMR_CCM1_C1OCTRL_PWMA;
-    // Enable channel, Invert pulse
-    TIMER_GATE->CCE = TMR_CCE_C1EN | TMR_CCE_C1P;
-
-    // Enable counting
-    COUNTER_A->CTRL1 |= TMR_CTRL1_CNTEN;
-    COUNTER_B_LSB->CTRL1 |= TMR_CTRL1_CNTEN;
-    COUNTER_B_MSB->CTRL1 |= TMR_CTRL1_CNTEN;
-    TIMER_GATE->CTRL1 |= TMR_CTRL1_CNTEN;
-
-    // Enable interrupt
-    NVIC_EnableIRQ(TMR1_OV_TMR10_IRQn);
-    #else
-   /**
-    *  Direct count implementation.
-    *   A timer is configured for counting external clocks using
-    *   EXT input. Each rising edge increments counter and
-    *   a stable external 1Hz triggers capture of the counter.
-    *
-    *   Each capture triggers an interrupt that reads captured value
-    *   and pass the difference between captured values to a callback
-    *
-    * */
-
-    /**
-     * Configure 32bit counter with external clock counter
-     * */
-    CLOCK_Enable(COUNTER_A, ENABLE);
-    // Enable 32bit with plus mode
-    COUNTER_A->CTRL1 = TMR_CTRL1_PMEN;
-    // Slave mode, external clock mode B
-    COUNTER_A->SMC = TMR_SMC_ECLKEN |
-                TMR_SMC_SMSEL_EXT |
-                TMR_SMC_TRGSEL_EXT;
-    // Count 32bit
-    COUNTER_A->AR = 0xFFFFFFFF;
-    // Start counting
-    COUNTER_A->CTRL1 |= TMR_CTRL1_CNTEN;
-
-    /**
-     * Configure capture mode with interrupt
-     * */
-    COUNTER_A->CCM1 = TMR_CCM1_C2C_C2IFP2;
-    // Generate interrupt on capture
-    COUNTER_A->DIE = TMR_DIE_C2IE;
-    // Enable interrupt
-    NVIC_EnableIRQ(TMR2_GLOBAL_IRQn);
-    #endif /* ENABLE_COUNT_RECIPROCAL */
-    return 1;
+    return countConfig(COUNT_CFG_RECIPROCAL);
 }
 
 /**
@@ -475,20 +470,24 @@ void countEocSet(void(*cb)(countres_t))
 void countStart(void)
 {
     if(counterHandler){
-        #ifdef ENABLE_COUNT_RECIPROCAL
-        TIMER_GATE->CTRL1 |= TMR_CTRL1_CNTEN;
-        #else
-        COUNTER_A->CCE = TMR_CCE_C2EN;
-        #endif
+        if(COUNTER_A->DIE & TMR_DIE_C2IE){
+            // Direct mode
+            COUNTER_A->CCE = TMR_CCE_C2EN;
+            // Forced open gate
+            TIMER_GATE->CC1 = 0;
+        }else{
+            TIMER_GATE->CTRL1 |= TMR_CTRL1_CNTEN;
+            // Open gate on first clock
+            TIMER_GATE->CC1 = 1;
+        }
     }
 }
 
 void countStop(void)
 {
-    #ifdef ENABLE_COUNT_RECIPROCAL
-    #else
-    COUNTER_A->CCE = 0;
-    #endif
+    if(COUNTER_A->DIE & TMR_DIE_C2IE){
+        COUNTER_A->CCE = 0;
+    }
 }
 
 /**
@@ -497,11 +496,9 @@ void countStop(void)
  */
 void countGateTimeSet(uint32_t ms)
 {
-    #ifdef ENABLE_COUNT_RECIPROCAL
-    TIMER_GATE->AR = ms << 2;
-    #else
-    (void)ms;
-    #endif
+    if(!(COUNTER_A->DIE & TMR_DIE_C2IE)){
+        TIMER_GATE->AR = ms << 2;
+    }
 }
 #endif
 
@@ -1016,15 +1013,16 @@ void SysTick_Handler(void)
     systicks++;
 }
 
+#if ENABLE_COUNT
 void TMR2_GLOBAL_IRQHandler(void)
 {
+    static countres_t count_last_cap;
     uint32_t Nx = COUNTER_A->CC2;
     COUNTER_A->STS = 0;
     counterHandler(Nx - count_last_cap);
     count_last_cap = Nx;
 }
 
-#ifdef ENABLE_COUNT_RECIPROCAL
 void TMR1_OV_TMR10_IRQHandler(void)
 {
     countres_t Ns = COUNTER_A->CNT;
@@ -1042,8 +1040,8 @@ void TMR1_OV_TMR10_IRQHandler(void)
     // Reset timers
     COUNTER_A->EVEG = TMR_EVEG_UEVG;
     COUNTER_B_LSB->EVEG = TMR_EVEG_UEVG;
-    COUNTER_B_LSB->STS = 0;
     COUNTER_B_MSB->EVEG = TMR_EVEG_UEVG;
+    COUNTER_B_LSB->STS = 0;
     COUNTER_B_MSB->STS = 0;
     TIMER_GATE->STS = 0;
 
