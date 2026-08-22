@@ -616,6 +616,10 @@ void ppsSync(void)
     #endif
 }
 
+/**
+ * @brief Attaches a handler to pps event
+ * @param cb
+ */
 void ppsInt(void (*cb)(void))
 {
     if(cb){
@@ -625,6 +629,17 @@ void ppsInt(void (*cb)(void))
     }else{
         TIMER_PPS->DIE = 0;
     }
+}
+
+/**
+ * @brief Selects PPS output between PPS generated
+ * by SOC and PPS from GPS module
+ *
+ * @param input
+ */
+void ppsSelect(enum pps_sel sel)
+{
+    GPIO_Write(PPS_SEL_PIN, sel);
 }
 #endif /* ENABLE_PPS */
 
@@ -844,7 +859,7 @@ int32_t adcVoltageGet(uint8_t ch)
  */
 void gpsEnableSet(uint8_t en)
 {
-    GPIO_Write(GPS_EN, en);
+    GPIO_Write(GPS_EN_PIN, en);
 }
 
 #endif
@@ -951,6 +966,7 @@ int main(void)
     if(!ppsInit()){
         DBG_BOARD_ERR("Fail to start pps");
     }
+    GPIO_Config(PPS_SEL_PIN, GPO_LS);
 #endif
 
 #ifdef ENABLE_COUNT
@@ -964,8 +980,8 @@ int main(void)
     uart2.cfg_gpio = 1;
 
     UART_Init(&uart2);
-    GPIO_Config(GPS_EN, GPO_LS);
-    GPIO_Write(GPS_EN, GPIO_PIN_LOW);
+    GPIO_Config(GPS_EN_PIN, GPO_LS);
+    GPIO_Write(GPS_EN_PIN, GPIO_PIN_LOW);
 #endif
 
     /* Log reset reason

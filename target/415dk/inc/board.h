@@ -85,10 +85,10 @@ extern "C" {
 #define ADC_SEQ_LEN             4
 
 /* IO Pins */
-#define CLK_SEL                 PB_5
-#define CNT_SEL                 PB_4
-#define PPS_SEL                 PC_13
-#define GPS_EN                  PB_9
+#define CLK_SEL_PIN             PB_5
+#define CNT_SEL_PIN             PB_4
+#define PPS_SEL_PIN             PC_13
+#define GPS_EN_PIN              PB_9
 
 enum led_tag{
     LED_PPS = 0,
@@ -120,6 +120,21 @@ enum mco_div {
     MCO_DIV_128 = (13 << 4),
     MCO_DIV_256 = (14 << 4),
     MCO_DIV_512 = (15 << 4)
+};
+
+enum pps_sel {
+    PPS_SEL_SOC = 0,
+    PPS_SEL_GPS
+};
+
+enum clk_sel {
+    CLK_SEL_SOC = 0,
+    CLK_SEL_LO
+};
+
+enum count_sel {
+    COUNT_SEL_OUT = 0,
+    COUNT_SEL_EXT
 };
 
 typedef struct gpsdo_eep {
@@ -168,7 +183,7 @@ int32_t adcVoltageGet(uint8_t ch);
 #endif
 
 #ifdef ENABLE_PPS
-void ppsSelect(uint8_t input);
+void ppsSelect(enum pps_sel sel);
 void ppsSync(void);
 void ppsPulseSet(uint16_t unit);
 void ppsInt(void (*cb)(void));
