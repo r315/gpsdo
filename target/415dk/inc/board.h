@@ -53,7 +53,7 @@ extern "C" {
 #define LED_ALM_MASK            (1 << LED_ALM_Pos)
 
 /* This is not eeprom size, but it should be greater than requested eeprom size and be 4byte aligned */
-#define EEPROM_SZ               128
+#define EEPROM_BUF_SIZE         128
 
 #define board_reset             NVIC_SystemReset
 
@@ -121,6 +121,10 @@ enum mco_div {
     MCO_DIV_256 = (14 << 4),
     MCO_DIV_512 = (15 << 4)
 };
+
+typedef struct gpsdo_eep {
+    uint32_t gps_serial_speed;
+}gpsdo_eep_t;
 
 #ifdef ENABLE_COUNT_RECIPROCAL
 typedef float countres_t;

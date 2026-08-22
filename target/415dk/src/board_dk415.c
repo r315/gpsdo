@@ -106,9 +106,9 @@ typedef struct adc {
 static uint32_t systicks;
 
 extern uint32_t _seeprom, _eeeprom; // declared on linker script
-static uint8_t eep_buf[EEPROM_SZ];
+static uint8_t eep_buf[EEPROM_BUF_SIZE];
 
-static nvdata_t dk415_nvdata = {
+static nvdata_t fls_eep = {
     .sector = {
         .start = (uint32_t)&_seeprom,
         .end = (uint32_t)&_eeeprom,
@@ -238,21 +238,21 @@ void ledSet(enum led_tag tag, uint8_t state)
  */
 uint8_t *eepromInit(uint16_t size)
 {
-    if (!dk415_nvdata.nvb.size)
+    if (!fls_eep.nvb.size)
     {
-        dk415_nvdata.nvb.data = eep_buf;
-        dk415_nvdata.nvb.size = NVDATA_BLK_SZ(size);
+        size = NVDATA_BLK_SZ(size);
 
-        if (dk415_nvdata.nvb.size > EEPROM_SZ)
-        {
-            dk415_nvdata.nvb.size = EEPROM_SZ;
-            DBG_BOARD_WRN("eep_buf should be bigger");
+        if(size > EEPROM_BUF_SIZE){
+            return NULL;
         }
 
-        NV_Init(&dk415_nvdata);
+        fls_eep.nvb.data = eep_buf;
+        fls_eep.nvb.size = size;
+
+        NV_Init(&fls_eep);
     }
 
-    return dk415_nvdata.nvb.data;
+    return eep_buf;
 }
 
 uint32_t eepromWrite(uint16_t offset, const uint8_t *data, uint32_t count)
