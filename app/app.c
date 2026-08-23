@@ -39,7 +39,12 @@ static void countHandler(countres_t cnt)
 #endif
 
 #ifdef ENABLE_PPS
-static void ppsLedHandler(void)
+static void ppsHandler(void)
+{
+    sys_flags |= SYS_FLAG_PPS;
+}
+
+static void ppsLedBlink(void)
 {
     #ifdef ENABLE_I2C
     static uint8_t pps_led_color;
@@ -396,7 +401,7 @@ static int ppsCmd(int argc, char **argv)
         printf("Usage: pps [args]\n");
         printf("  sync          Sync pps with external pps\n");
         printf("  pulse <val>   pulse width in units os 100us\n");
-        printf("  int           attach interrupt to pps\n");
+        printf("  int <0|1>     attach interrupt to pps\n");
         return CLI_OK;
     }
 
@@ -414,7 +419,7 @@ static int ppsCmd(int argc, char **argv)
     }
 
     if(CLI_IS_PARM_1("int")){
-        ppsInt(ppsLedHandler);
+        ppsInt((argv[2][0] == '1') ? ppsHandler : NULL);
         return CLI_OK;
     }
 
@@ -450,6 +455,11 @@ static int sysCmd(int argc, char **argv)
         if(CLI_IS_PARM(2, "start")){
             countEocSet(countHandler);
             countStart();
+            return CLI_OK;
+        }
+
+        if(CLI_IS_PARM(2, "stop")){
+            countStop();
             return CLI_OK;
         }
 
@@ -644,7 +654,7 @@ void app(void)
     WDT_Init(3000);
 
     #ifdef ENABLE_PPS
-    ppsInt(ppsLedHandler);
+    ppsInt(ppsHandler);
     #endif
 
 
@@ -657,7 +667,7 @@ void app(void)
 
 #ifdef ENABLE_PPS
         if(sys_flags & SYS_FLAG_PPS){
-            ppsLedHandler();
+            ppsLedBlink();
             sys_flags = (sys_flags & ~SYS_FLAG_PPS);
         }
 #endif

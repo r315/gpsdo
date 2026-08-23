@@ -87,8 +87,9 @@ extern "C" {
 /* IO Pins */
 #define CLK_SEL_PIN             PB_5
 #define CNT_SEL_PIN             PB_4
-#define PPS_SEL_PIN             PC_13
+#define PPS_SEL_PIN             PA_1
 #define GPS_EN_PIN              PB_9
+#define TST_EN_PIN              PC_13
 
 enum led_tag{
     LED_PPS = 0,

@@ -562,16 +562,21 @@ static uint32_t ppsInit(void)
     TIMER_PPS->DIV = (CLOCK_Get(CLOCK_CLK4) / 10000UL) - 1;
     // Div again by 10000 for 1Hz
     TIMER_PPS->AR = 10000 - 1;
-    // Use PWM mode A
-    TIMER_PPS->CCM1 = TMR_CCM1_C2OCTRL_PWMA;
+    // Use PWM mode A for pps generation, capture pps input
+    TIMER_PPS->CCM1 = TMR_CCM1_C2OCTRL_PWMA |
+                      TMR_CCM1_C1C_C1IFP1;
+    // Slave mode: Start on trigger (Rising edge on PA2)
+    TIMER_PPS->SMC = TMR_SMC_SMSEL_TRG |
+                     TMR_SMC_TRGSEL_C1IF1;
     // Set 50% duty
     TIMER_PPS->CC2 = TIMER_PPS->AR >> 1;
-    // Enable channel
-    TIMER_PPS->CCE = TMR_CCE_C2EN;
+    // Enable channel for pps output and pps input interrupt
+    TIMER_PPS->CCE = TMR_CCE_C2EN | TMR_CCE_C1EN;
     // Enable timer
     TIMER_PPS->CTRL1 = TMR_CTRL1_CNTEN;
-    // Config output pin
+    // Config output pins
     GPIO_Config(PA_3, GPO_HS_AF);
+    GPIO_Config(PA_2, GPI_PD);
     #endif /* ENABLE_PPS_RTC */
     return 1;
 }
@@ -602,26 +607,22 @@ void ppsPulseSet(uint16_t unit)
 void ppsSync(void)
 {
     #ifndef ENABLE_PPS_RTC
-    GPIO_Config(PA_2, GPI_PD);
     // Stop timer
     TIMER_PPS->CTRL1 &= ~TMR_CTRL1_CNTEN;
     // Reset counter
     TIMER_PPS->EVEG = TMR_EVEG_UEVG;
-    // Slave mode: Start on trigger (Rising edge on PA2)
-    TIMER_PPS->SMC = TMR_SMC_SMSEL_TRG |
-                     TMR_SMC_TRGSEL_C1IF1;
     #endif
 }
 
 /**
- * @brief Attaches a handler to pps event
+ * @brief Attaches a handler to pps input pin
  * @param cb
  */
 void ppsInt(void (*cb)(void))
 {
     if(cb){
         ppsHandler = cb;
-        TIMER_PPS->DIE = TMR_DIE_UEVIE;
+        TIMER_PPS->DIE = TMR_DIE_C1IE;
         NVIC_EnableIRQ(TMR1_BRK_TMR9_IRQn);
     }else{
         TIMER_PPS->DIE = 0;
@@ -864,7 +865,7 @@ void gpsEnableSet(uint8_t en)
 int main(void)
 {
     // Enable gpio peripherals
-    RCC->APB2EN |= RCC_APB2EN_GPIOAEN | RCC_APB2EN_GPIOBEN |
+    RCC->APB2EN |= RCC_APB2EN_GPIOAEN | RCC_APB2EN_GPIOBEN | RCC_APB2EN_GPIODEN |
                    RCC_APB2EN_GPIOCEN | RCC_APB2EN_GPIOFEN | RCC_APB2EN_AFIOEN;
 
     AFIO->MAP = AFIO_MAP_SWJTAG_CONF_JTAGDISABLE;
@@ -964,6 +965,8 @@ int main(void)
         DBG_BOARD_ERR("Fail to start pps");
     }
     GPIO_Config(PPS_SEL_PIN, GPO_LS);
+    GPIO_Write(TST_EN_PIN, GPIO_PIN_HIGH);
+    GPIO_Config(TST_EN_PIN, GPO_LS);
 #endif
 
 #ifdef ENABLE_COUNT
