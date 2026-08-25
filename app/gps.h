@@ -24,6 +24,7 @@ enum nmea_ident{
 };
 
 typedef struct {
+    enum nmea_ident id;
     char time[11];        // UTC Time (hhmmss.ss)
     char status;          // 'A' = Active/Valid, 'V' = Void/Invalid
     double latitude;      // Signed Decimal Degrees (+ for N, - for S)
@@ -34,6 +35,7 @@ typedef struct {
 } nmea_gprmc_t;
 
 typedef struct {
+    enum nmea_ident id;
     char time[11];        // UTC Time (hhmmss.ss)
     double latitude;      // Signed Decimal Degrees (+ for N, - for S)
     double longitude;     // Signed Decimal Degrees (+ for E, - for W)

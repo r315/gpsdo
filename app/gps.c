@@ -10,6 +10,8 @@
 static uint8_t nmea_sentence[NMEA_SENTENCE_MAX_SIZE];
 static uint16_t serial_wr_idx;
 static stdinout_t *serial;
+static double raw;
+typedef void (*fparser_t)(uint8_t, const char*, void*);
 
 
 static uint8_t gps_line_get(void)
@@ -97,122 +99,157 @@ static double nmea_to_decimal(double raw_coord, char direction) {
 }
 
 /**
+ * @brief $GPGGA,,,,,,0,00,99.99,,,,,,*48
+ * @param field_index
+ * @param raw
+ * @param field
+ * @param func
+ */
+static void nmeaGgaFields(uint8_t field_index, const char *field, void *id)
+{
+    nmea_gpgga_t *identifier = (nmea_gpgga_t*)id;
+
+    // Parse individual fields by sequential index
+    switch (field_index) {
+        case 0:
+        identifier->id = NMEA_GGA;
+        break;
+        case 1: // UTC Time
+        strncpy(identifier->time, field, sizeof(identifier->time) - 1);
+        break;
+        case 2: // Raw Latitude
+        da2d(field, &raw);
+        break;
+        case 3: // Latitude Direction
+        identifier->latitude = nmea_to_decimal(raw, field[0]);
+        break;
+        case 4: // Raw Longitude
+        da2d(field, &raw);
+        break;
+        case 5: // Longitude Direction
+        identifier->longitude = nmea_to_decimal(raw, field[0]);
+        break;
+        case 6: // GPS Quality indicator
+        identifier->fix = field[0] - '0';
+        break;
+        case 7: // Satellites in view
+        {
+            int32_t nsat;
+            if(ia2i(field, (int32_t*)&nsat))
+            identifier->nsat = (int32_t)nsat;
+            break;
+        }
+        default:
+        break;
+    }
+}
+
+/**
  * @brief
+ * $GPRMC,,V,,,,,,,,,,N*53
+ * @param field_index
+ * @param raw
+ * @param field
+ * @param func
+ */
+static void nmeaRmcFields(uint8_t field_index, const char *field, void *id)
+{
+    nmea_gprmc_t *identifier = (nmea_gprmc_t*)id;
+
+    // Parse individual fields by sequential index
+    switch (field_index) {
+        case 0:
+            identifier->id = NMEA_RMC;
+            break;
+        case 1: // UTC Time
+            strncpy(identifier->time, field, sizeof(identifier->time) - 1);
+            break;
+        case 2: // Status
+            identifier->status = field[0];
+            break;
+        case 3: // Raw Latitude
+            da2d(field, &raw);
+            break;
+        case 4: // Latitude Direction
+            identifier->latitude = nmea_to_decimal(raw, field[0]);
+            break;
+        case 5: // Raw Longitude
+            da2d(field, &raw);
+            break;
+        case 6: // Longitude Direction
+            identifier->longitude = nmea_to_decimal(raw, field[0]);
+            break;
+        case 7: // Speed
+            identifier->speed_knots = da2d(field, &raw);
+            break;
+        case 8: // Course
+            identifier->course_degrees = da2d(field, &raw);
+            break;
+        case 9: // Date
+            strncpy(identifier->date, field, sizeof(identifier->date) - 1);
+            break;
+        default:
+            break;
+    }
+}
+
+/**
+ * @brief
+ *
  * @param sentence
  * @param data
  * @return
  */
-static enum nmea_ident nmeaGpggaParse(const char *sentence, nmea_gpgga_t *data)
-{
-    UNUSED(sentence);
-    UNUSED(data);
-    return NMEA_UNKNOWN;
-}
-
-static enum nmea_ident nmeaGpgllParse(const char *sentence, nmea_gpgga_t *data)
-{
-    UNUSED(sentence);
-    UNUSED(data);
-    return NMEA_UNKNOWN;
-}
-
-static enum nmea_ident nmeaGpgsaParse(const char *sentence, nmea_gpgga_t *data)
-{
-    UNUSED(sentence);
-    UNUSED(data);
-    return NMEA_UNKNOWN;
-}
-
-static enum nmea_ident nmeaGpvtgParse(const char *sentence, nmea_gpgga_t *data)
-{
-    UNUSED(sentence);
-    UNUSED(data);
-    return NMEA_UNKNOWN;
-}
-
-
-/**
- * @brief Parse RMC sentence
- *
- * @param sentence  sentence without identifier
- * @param data
- *
- * @return
- */
-static enum nmea_ident nmeaGprmcParse(const char *sentence, nmea_gprmc_t *data)
+static enum nmea_ident nmeaParse(const char *sentence, void *identifier, fparser_t parser)
 {
     const char *p = sentence;
-    int field = 0;
+    uint8_t field = 0;
     char buffer[32];
+    uint8_t checksum = 0;
 
-    // Variables for internal coordinate parsing
-    double raw_dir;
+    if(!p || !identifier || !parser){
+        return NMEA_INVALID;
+    }
 
     while (*p) {
-        // Find the end of the current field
-        const char *next_comma = strchr(p, ',');
-        if (!next_comma) {
-            next_comma = strchr(p, '*'); // Checksum separator at the end
+        // Find the end of the current field, compute crc and len
+        const char *next_comma = p;
+        uint8_t len = 0;
+        while (*next_comma != ',') {
+            char tmp = *next_comma;
+            if(tmp == '\0'){
+                // unexpected end
+                return NMEA_INVALID;
+            }
+            if(tmp == '*'){
+                // End of fields, check checksum
+                return *(enum nmea_ident*)identifier;
+            }
+            // Copy field data into an isolated null-terminated buffer
+            if(len < sizeof(buffer)){
+                buffer[len++] = tmp;
+            }
+            checksum ^= tmp;
+            next_comma++;
         }
 
-        // Calculate field length
-        size_t len = next_comma ? (size_t)(next_comma - p) : strlen(p);
-        if (len >= sizeof(buffer)) len = sizeof(buffer) - 1;
-
-        // Copy field data into an isolated null-terminated buffer
-        strncpy(buffer, p, len);
         buffer[len] = '\0';
 
-
-        // Parse individual fields by sequential index
-        switch (field) {
-            case 1: // UTC Time
-                strncpy(data->time, buffer, sizeof(data->time) - 1);
-                break;
-            case 2: // Status
-                data->status = buffer[0];
-                break;
-            case 3: // Raw Latitude
-                if (len > 0) da2d(buffer, &raw_dir); else raw_dir = 0.0f;
-                break;
-            case 4: // Latitude Direction
-                if (raw_dir != 0.0) data->latitude = nmea_to_decimal(raw_dir, buffer[0]);
-                break;
-            case 5: // Raw Longitude
-                if (len > 0) da2d(buffer, &raw_dir); else raw_dir = 0.0f;
-                break;
-            case 6: // Longitude Direction
-                if (raw_dir != 0.0) data->longitude = nmea_to_decimal(raw_dir, buffer[0]);
-                break;
-            case 7: // Speed
-                data->speed_knots = (len > 0) ? da2d(buffer, &raw_dir) : 0.0f;
-                break;
-            case 8: // Course
-                data->course_degrees = (len > 0) ? da2d(buffer, &raw_dir) : 0.0f;
-                break;
-            case 9: // Date
-                strncpy(data->date, buffer, sizeof(data->date) - 1);
-                break;
-            default:
-                break;
+        // Call identifier parser only if field is not empty
+        if(len > 0){
+            parser(field, buffer, identifier);
         }
 
-        if (!next_comma || *next_comma == '*') break;
         p = next_comma + 1;
         field++;
     }
 
-    return (data->status == 'A') ? NMEA_RMC : NMEA_INVALID;
+    return NMEA_INVALID;
 }
 
 /**
  * @brief Tries to parse NMEA sentence to a structure
  *
- * $GPRMC,,V,,,,,,,,,,N*53
- * $GPVTG,,,,,,,,,N*30
- * $GPGGA,,,,,,0,00,99.99,,,,,,*48
- * $GPGSA,A,1,,,,,,,,,,,,,99.99,99.99,99.99*30
- * $GPGLL,,,,,,V,N*64
  *
  * @param sentence  well formed nmea sentence starting with '$'
  * @param parsed    pointer to unknown structure, it has to have a minimum size
@@ -229,18 +266,19 @@ enum nmea_ident nmeaSentenceParse(const char* sentence, void* parsed)
         return NMEA_INVALID;
     }
 
+    // skip sentence start
     identifier = sentence + 1;
 
     if((data_field = strstr(identifier, "GPRMC")) != NULL){
-        return nmeaGprmcParse(data_field, parsed);
+        return nmeaParse(data_field, parsed, nmeaRmcFields);
     }else if((data_field = strstr(identifier, "GPVTG")) != NULL){
-        return nmeaGpvtgParse(data_field, parsed);
+        return nmeaParse(data_field, parsed, NULL);
     }else if((data_field = strstr(identifier, "GPGGA")) != NULL){
-        return nmeaGpggaParse(data_field, parsed);
+        return nmeaParse(data_field, parsed, nmeaGgaFields);
     }else if((data_field = strstr(identifier, "GPGSA")) != NULL){
-        return nmeaGpgsaParse(data_field, parsed);
+        return nmeaParse(data_field, parsed, NULL);
     }else if((data_field = strstr(identifier, "GPGLL")) != NULL){
-        return nmeaGpgllParse(data_field, parsed);
+        return nmeaParse(data_field, parsed, NULL);
     }
 
     return NMEA_UNKNOWN;
