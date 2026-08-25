@@ -683,10 +683,10 @@ void app(void)
 
 #ifdef ENABLE_COUNT
         if(sys_flags & SYS_FLAG_LOG_COUNT){
-            printf("\r%d", (int)count);
-            count = (int)(count * 1000) % 1000;
-            printf(".%d ", (int)count);
-            sys_flags = (sys_flags & ~SYS_FLAG_LOG_COUNT) | SYS_FLAG_PPS;
+            int int_part = (int)count;
+            int frac_part = (int)((count - int_part) * 1000);
+            printf("\r%d.%03d ", int_part, frac_part);
+            sys_flags = (sys_flags & ~SYS_FLAG_LOG_COUNT);
         }
 #endif
 
