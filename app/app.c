@@ -341,11 +341,17 @@ static int gpsCmd(int argc, char **argv)
     if(CLI_IS_PARM_1("help") || argc == 1){
         printf("Usage: gps [args]\n");
         printf("  en <0|1>      Enable gps module\n");
+        printf("  tunnel <0|1>  Print NMEA sentences\n");
         return CLI_OK;
     }
 
     if(CLI_IS_PARM_1("en")){
         gpsEnableSet(argv[2][0] == '1');
+        return CLI_OK;
+    }
+
+    if(CLI_IS_PARM_2("tunnel")){
+        sys.tunnel_gps = !!(argv[3][0] == '1');
         return CLI_OK;
     }
 
@@ -515,12 +521,6 @@ static int sysCmd(int argc, char **argv)
             sys.log_vref = !!(argv[3][0] == '1');
             return CLI_OK;
         }
-    #ifdef ENABLE_GPS
-        if(CLI_IS_PARM_2("gps")){
-            sys.tunnel_gps = !!(argv[3][0] == '1');
-            return CLI_OK;
-        }
-    #endif
     }
 
     return CLI_BAD_PARAM;

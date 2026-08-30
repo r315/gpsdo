@@ -632,6 +632,7 @@ void ppsInt(void (*cb)(void))
 {
     if(cb){
         ppsHandler = cb;
+        // Enable interrupt on capture
         TIMER_PPS->DIE = TMR_DIE_C1IE;
         NVIC_EnableIRQ(TMR1_BRK_TMR9_IRQn);
     }else{
