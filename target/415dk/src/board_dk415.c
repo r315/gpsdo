@@ -902,6 +902,9 @@ int main(void)
     {
         SystemConfigClockSrc(RCC_CFG_SYSCLKSEL_PLL);
         SystemCoreClockUpdate();
+    #ifdef ENABLE_CFD
+        RCC->CTRL |= RCC_CTRL_HSECFDEN;
+    #endif
     }
 
     uart1.bus = UART_BUS0;
@@ -1075,5 +1078,23 @@ void TMR1_BRK_TMR9_IRQHandler(void)
 {
     TIMER_PPS->STS = 0;
     ppsHandler();
+}
+#endif
+
+#ifdef ENABLE_CFD
+void NMI_Handler(void)
+{
+    RCC->CFG = 0;               // Clear clock prescallers
+    USART1->BAUDR = HSI_VALUE / 115200;
+    USART1->CTRL1 = 0x2008;
+    GPIOA->CTRLH = 0x88844494;  // Cfg PA9 as AF
+
+    const char cfd_message [] = VT100_RED"\n\n!!!! HSE clock failure detected !!!!\n\n";
+
+    uart1_write(cfd_message, sizeof(cfd_message));
+
+    RCC->CLKINT = RCC_CLKINT_HSECFDF;
+
+    while(1){}
 }
 #endif

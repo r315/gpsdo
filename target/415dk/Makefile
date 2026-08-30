@@ -19,6 +19,7 @@ FEATURE_ENABLE +=ENABLE_COUNT
 FEATURE_ENABLE +=ENABLE_DEBUG
 FEATURE_ENABLE +=ENABLE_DEBUG_BOARD
 FEATURE_ENABLE +=ENABLE_DEBUG_APP
+FEATURE_ENABLE +=ENABLE_CFD
 #######################################
 # paths
 #######################################
