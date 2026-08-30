@@ -145,11 +145,6 @@ enum count_cfg {
     COUNT_CFG_DIRECT
 };
 
-typedef struct gpsdo_eep {
-    uint32_t gps_serial_speed;
-}gpsdo_eep_t;
-
-
 typedef float countres_t;
 
 /* Global varaiables */
@@ -183,6 +178,7 @@ uint16_t i2cRead(uint8_t dev_addr, uint8_t *data, uint16_t size);
 #ifdef ENABLE_DAC
 uint16_t dacValueGet(void);
 void dacValueSet(uint16_t);
+void dacEnable(uint8_t en);
 #endif
 
 #ifdef ENABLE_ADC

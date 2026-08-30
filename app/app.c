@@ -20,20 +20,32 @@
 #define SYS_FLAG_LOG_GPS      (1 << 3)
 #define SYS_FLAG_PPS          (1 << 4)
 
-typedef struct {
-    uint32_t log_temp  : 1;
-    uint32_t log_vref  : 1;
-    uint32_t log_count : 1;
-    uint32_t log_pps   : 1;
-    uint32_t log_vocxo : 1;
-    uint32_t tunnel_gps  : 1;
+#define SYS_LOG_TICK          500   /* ms */
+#define WDT_TIMEOUT           3000  /* ms */
+
+typedef struct app_eep {
+    uint32_t gps_serial_speed;
+    uint32_t ocxo_dac_cal;
+    uint32_t clk_out_freq;
+}app_eep_t;
+
+typedef struct app_ {
+    uint32_t log_temp    : 1;
+    uint32_t log_vref    : 1;
+    uint32_t log_count   : 1;
+    uint32_t log_pps     : 1;
+    uint32_t log_vocxo   : 1;
     uint32_t count_ready : 1;
     uint32_t pps_ready   : 1;
-}app_flags_t;
+    uint32_t ocxo_ready  : 1;
+    uint32_t gps_fix     : 1;
+    uint32_t gps_tunnel  : 1;
 
-static app_flags_t sys;
-static uint32_t next_tick;
-static uint32_t sys_tick_ms;
+    app_eep_t eep;
+    uint32_t log_tick;
+}app_t;
+
+static app_t sys;
 
 #ifdef ENABLE_I2C
 static uint8_t i2c_device_addr;
@@ -658,6 +670,15 @@ void app(void)
     putchar('\n');
     #endif
 
+    memset(&sys, 0, sizeof(sys));
+
+    eepromInit(sizeof(app_eep_t));
+
+    #ifdef ENABLE_DAC
+    dacValueSet(sys.eep.ocxo_dac_cal);
+    dacEnable(1);
+    #endif
+
     #ifdef ENABLE_GPS
     gpsInit(&gps_serial);
     #endif
@@ -666,16 +687,11 @@ void app(void)
     CLI_HandleLine();
     #endif
 
-    memset(&sys, 0, sizeof(sys));
-
-    sys_tick_ms = 500;
-
-    WDT_Init(3000);
-
     #ifdef ENABLE_PPS
     ppsInt(ppsHandler);
     #endif
 
+    WDT_Init(WDT_TIMEOUT);
 
     while(1) {
 #ifdef ENABLE_PPS
@@ -704,7 +720,7 @@ void app(void)
 #endif
 
         /* Print log data */
-        if(millis() > next_tick){
+        if(millis() > sys.log_tick){
 #ifdef ENABLE_ADC
             if(sys.log_temp){
                 float temp = tempRead();
@@ -716,7 +732,7 @@ void app(void)
             }
             adcConversionStart(FALSE);
 #endif
-            next_tick = millis() + sys_tick_ms;
+            sys.log_tick = millis() + SYS_LOG_TICK;
         }
 
 #ifdef ENABLE_CLI

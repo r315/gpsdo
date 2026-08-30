@@ -105,6 +105,7 @@ typedef struct adc {
 
 static uint32_t systicks;
 
+#ifdef ENABLE_FLS_EEPROM
 extern uint32_t _seeprom, _eeeprom; // declared on linker script
 static uint8_t eep_buf[EEPROM_BUF_SIZE];
 
@@ -117,6 +118,7 @@ static nvdata_t fls_eep = {
         .write = FLASH_Write,
         .erase = Flash_EraseSector},
     .nvb = {.size = 0, .next = NULL, .data = NULL}};
+#endif
 
 static serialbus_t uart1;
 static serialbus_t uart2;
@@ -237,6 +239,7 @@ void ledSet(enum led_tag tag, uint8_t state)
  */
 uint8_t *eepromInit(uint16_t size)
 {
+    #ifdef ENABLE_FLS_EEPROM
     if (!fls_eep.nvb.size)
     {
         size = NVDATA_BLK_SZ(size);
@@ -252,6 +255,10 @@ uint8_t *eepromInit(uint16_t size)
     }
 
     return eep_buf;
+    #else
+    UNUSED(size);
+    return NULL;
+    #endif
 }
 
 uint32_t eepromWrite(uint16_t offset, const uint8_t *data, uint32_t count)
