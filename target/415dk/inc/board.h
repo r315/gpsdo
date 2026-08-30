@@ -125,7 +125,9 @@ enum mco_div {
 
 enum pps_sel {
     PPS_SEL_SOC = 0,
-    PPS_SEL_GPS
+    PPS_SEL_GPS,
+    PPS_SEL_TST_EN,
+    PPS_SEL_TST_DIS
 };
 
 enum clk_sel {

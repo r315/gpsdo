@@ -641,13 +641,21 @@ void ppsInt(void (*cb)(void))
 
 /**
  * @brief Selects PPS output between PPS generated
- * by SOC and PPS from GPS module
+ * by SOC and PPS from GPS module.
+ *
+ * Also it is possible to make signal input connetor
+ * an output of pps signal from GPS module. This allow
+ * to observe the two pps signals.
  *
  * @param input
  */
 void ppsSelect(enum pps_sel sel)
 {
-    GPIO_Write(PPS_SEL_PIN, sel);
+    if(sel < PPS_SEL_TST_EN){
+        GPIO_Write(PPS_SEL_PIN, sel);
+    }else{
+        GPIO_Write(TST_EN_PIN, sel - PPS_SEL_TST_EN);
+    }
 }
 #endif /* ENABLE_PPS */
 

@@ -436,7 +436,7 @@ static int ppsCmd(int argc, char **argv)
     }
 
     if(CLI_IS_PARM_1("src")){
-        ppsSelect(argv[2][0] == '1');
+        ppsSelect(argv[2][0] - '0');
         return CLI_OK;
     }
 
