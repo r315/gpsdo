@@ -500,6 +500,16 @@ void countGateTimeSet(uint32_t ms)
         TIMER_GATE->AR = ms << 2;
     }
 }
+
+/**
+ * @brief Selects input to be counted
+ *
+ * @param sel
+ */
+void countSelect(enum count_sel sel)
+{
+    GPIO_Write(CNT_SEL_PIN, sel);
+}
 #endif
 
 #ifdef ENABLE_PPS

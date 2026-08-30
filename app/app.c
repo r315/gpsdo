@@ -20,7 +20,18 @@
 #define SYS_FLAG_LOG_GPS      (1 << 3)
 #define SYS_FLAG_PPS          (1 << 4)
 
-static uint32_t sys_flags;
+typedef struct {
+    uint32_t log_temp  : 1;
+    uint32_t log_vref  : 1;
+    uint32_t log_count : 1;
+    uint32_t log_pps   : 1;
+    uint32_t log_vocxo : 1;
+    uint32_t tunnel_gps  : 1;
+    uint32_t count_ready : 1;
+    uint32_t pps_ready   : 1;
+}app_flags_t;
+
+static app_flags_t sys;
 static uint32_t next_tick;
 static uint32_t sys_tick_ms;
 
@@ -34,14 +45,14 @@ static countres_t count;
 static void countHandler(countres_t cnt)
 {
     count = cnt;
-    sys_flags |= SYS_FLAG_LOG_COUNT;
+    sys.count_ready = TRUE;
 }
 #endif
 
 #ifdef ENABLE_PPS
 static void ppsHandler(void)
 {
-    sys_flags |= SYS_FLAG_PPS;
+    sys.pps_ready = TRUE;
 }
 
 static void ppsLedBlink(void)
@@ -400,8 +411,9 @@ static int ppsCmd(int argc, char **argv)
     if(CLI_IS_PARM_1("help") || argc == 1){
         printf("Usage: pps [args]\n");
         printf("  sync          Sync pps with external pps\n");
-        printf("  pulse <val>   pulse width in units os 100us\n");
+        printf("  pulse <val>   pulse width in units of 100us\n");
         printf("  int <0|1>     attach interrupt to pps\n");
+        printf("  src <0|1>\n");
         return CLI_OK;
     }
 
@@ -423,91 +435,92 @@ static int ppsCmd(int argc, char **argv)
         return CLI_OK;
     }
 
+    if(CLI_IS_PARM_1("src")){
+        ppsSelect(argv[2][0] == '1');
+        return CLI_OK;
+    }
+
+    return CLI_BAD_PARAM;
+}
+#endif
+
+#ifdef ENABLE_COUNT
+static int countCmd(int argc, char **argv)
+{
+    if(CLI_IS_PARM_1("help") || argc == 1){
+        printf("Usage: count [args]\n");
+        printf("  start\n");
+        printf("  stop\n");
+        printf("  mode <0|1>\n");
+        printf("  src <0|1>\n");
+        return CLI_OK;
+    }
+
+    if(CLI_IS_PARM_1("start")){
+        countEocSet(countHandler);
+        countStart();
+        return CLI_OK;
+    }
+
+    if(CLI_IS_PARM_1("stop")){
+        countStop();
+        return CLI_OK;
+    }
+
+    if(CLI_IS_PARM_1("mode")){
+        countConfig(argv[2][0] == '1');
+        return CLI_OK;
+    }
+
+    if(CLI_IS_PARM_1("src")){
+        countSelect(argv[2][0] == '1');
+        return CLI_OK;
+    }
+
     return CLI_BAD_PARAM;
 }
 #endif
 
 static int sysCmd(int argc, char **argv)
 {
-    if(CLI_IS_PARM(1, "help") || argc == 1){
+    if(CLI_IS_PARM_1("help") || argc == 1){
         printf("Usage: sys [args]\n");
-        printf("  log <temp|vrefint|count> <0|1>     Logging\n");
+        printf("  log <temp|vrefint|count> <0|1>     Log enable\n");
         printf("  mco <src> <div>              Main clock output 0-15 0-15\n");
 
         return CLI_OK;
     }
 
-    if(CLI_IS_PARM(1, "mco")){
+    if(CLI_IS_PARM_1("mco")){
         int32_t src, div;
-        #ifdef BOARD_DK415
+    #ifdef BOARD_DK415
         if(CLI_GET_INT_PARM(2, src) && CLI_GET_INT_PARM(3, div)){
             mco(src, div);
         }
-        #else
+    #else
         if(CLI_GET_INT_PARM(2, src)){
             mco(src);
         }
-        #endif
+    #endif
         return CLI_OK;
     }
-#ifdef ENABLE_COUNT
-    if(CLI_IS_PARM(1, "count")){
-        if(CLI_IS_PARM(2, "start")){
-            countEocSet(countHandler);
-            countStart();
+
+    if(CLI_IS_PARM_1("log")){
+        if(CLI_IS_PARM_2("temp")){
+            sys.log_temp = !!(argv[3][0] == '1');
             return CLI_OK;
         }
 
-        if(CLI_IS_PARM(2, "stop")){
-            countStop();
+        if(CLI_IS_PARM_2("vrefint")){
+            sys.log_vref = !!(argv[3][0] == '1');
             return CLI_OK;
         }
-
-        if(CLI_IS_PARM(2, "cfg")){
-            countConfig(argv[3][0] == '1');
+    #ifdef ENABLE_GPS
+        if(CLI_IS_PARM_2("gps")){
+            sys.tunnel_gps = !!(argv[3][0] == '1');
             return CLI_OK;
         }
-    }
-#endif
-    if(CLI_IS_PARM(1, "log")){
-        if(CLI_IS_PARM(2, "temp")){
-            if(CLI_IS_PARM(3, "1")){
-                sys_flags |= SYS_FLAG_LOG_TEMP;
-            }else{
-                sys_flags &= ~SYS_FLAG_LOG_TEMP;
-            }
-            return CLI_OK;
-        }
-
-        if(CLI_IS_PARM(2, "vrefint")){
-            if(CLI_IS_PARM(3, "1")){
-                sys_flags |= SYS_FLAG_LOG_VREFINT;
-            }else{
-                sys_flags &= ~SYS_FLAG_LOG_VREFINT;
-            }
-            return CLI_OK;
-        }
-        #ifdef ENABLE_COUNT
-        if(CLI_IS_PARM(2, "count")){
-            if(argv[3][0] == '1'){
-                countEocSet(countHandler);
-                countStart();
-            }else{
-                countStop();
-            }
-            return CLI_OK;
-        }
-        #endif
-        #ifdef ENABLE_GPS
-        if(CLI_IS_PARM(2, "gps")){
-            if(argv[3][0] == '1'){
-                sys_flags |= SYS_FLAG_LOG_GPS;
-            }else{
-                sys_flags &= ~SYS_FLAG_LOG_GPS;
-            }
-            return CLI_OK;
-        }
-        #endif
+    #endif
     }
 
     return CLI_BAD_PARAM;
@@ -540,7 +553,9 @@ static int helpCmd(int argc, char **argv)
 #ifdef ENABLE_PPS
     printf("  pps     pps subsystem\n");
 #endif
-
+#ifdef ENABLE_PPS
+    printf("  count   Frequency counter\n");
+#endif
 
     putchar('\n');
 
@@ -566,6 +581,9 @@ cli_command_t cli_cmds [] = {
 #endif
 #if ENABLE_CLOCK_GEN
     {"pll", pllCmd},
+#endif
+#ifdef ENABLE_COUNT
+    {"count", countCmd},
 #endif
 #ifdef ENABLE_PPS
     {"pps", ppsCmd},
@@ -648,7 +666,8 @@ void app(void)
     CLI_HandleLine();
     #endif
 
-    sys_flags = 0;
+    memset(&sys, 0, sizeof(sys));
+
     sys_tick_ms = 500;
 
     WDT_Init(3000);
@@ -659,21 +678,15 @@ void app(void)
 
 
     while(1) {
-#ifdef ENABLE_CLI
-        if(CLI_ReadLine()){
-            CLI_HandleLine();
-        }
-#endif
-
 #ifdef ENABLE_PPS
-        if(sys_flags & SYS_FLAG_PPS){
+        if(sys.pps_ready){
             ppsLedBlink();
-            sys_flags = (sys_flags & ~SYS_FLAG_PPS);
+            sys.pps_ready = FALSE;
         }
 #endif
 
 #ifdef ENABLE_GPS
-        if(sys_flags & SYS_FLAG_LOG_GPS){
+        if(sys.tunnel_gps){
             const char *sentence = nmeaSentenceGet();
             if(sentence){
                 printf("%s", sentence);
@@ -682,22 +695,23 @@ void app(void)
 #endif
 
 #ifdef ENABLE_COUNT
-        if(sys_flags & SYS_FLAG_LOG_COUNT){
+        if(sys.count_ready){
             int int_part = (int)count;
             int frac_part = (int)((count - int_part) * 1000);
             printf("\r%d.%03d ", int_part, frac_part);
-            sys_flags = (sys_flags & ~SYS_FLAG_LOG_COUNT);
+            sys.count_ready = FALSE;
         }
 #endif
 
+        /* Print log data */
         if(millis() > next_tick){
 #ifdef ENABLE_ADC
-            if(sys_flags & SYS_FLAG_LOG_TEMP){
+            if(sys.log_temp){
                 float temp = tempRead();
                 printf("\rTemp %d.%d ", (int)temp, (int)(temp*10)%10);
             }
 
-            if(sys_flags & SYS_FLAG_LOG_VREFINT){
+            if(sys.log_vref){
                 printf("Vrefint %ldmV", adcVoltageGet(ADC_CHANNEL_INTRV));
             }
             adcConversionStart(FALSE);
@@ -705,6 +719,11 @@ void app(void)
             next_tick = millis() + sys_tick_ms;
         }
 
+#ifdef ENABLE_CLI
+        if(CLI_ReadLine()){
+            CLI_HandleLine();
+        }
+#endif
         WDT_Reset();
     }
 }

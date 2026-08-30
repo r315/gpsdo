@@ -165,12 +165,15 @@ uint32_t eepromErase(void);
 
 void mco(enum mco_src src, enum mco_div div);
 void ledSet(enum led_tag tag, uint8_t state);
+
+#ifdef ENABLE_COUNT
 void countEocSet(void(*cb)(countres_t));
 void countGateTimeSet(uint32_t ms);
 void countStart(void);
 void countStop(void);
 uint32_t countConfig(enum count_cfg cfg);
-
+void countSelect(enum count_sel sel);
+#endif
 
 uint16_t i2cWrite(uint8_t dev_addr, const uint8_t *data, uint16_t size);
 uint16_t i2cRead(uint8_t dev_addr, uint8_t *data, uint16_t size);
