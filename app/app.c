@@ -79,6 +79,30 @@ static void ppsLedBlink(void)
 
 #ifdef ENABLE_CLI
 
+/**
+ * @brief Obtain external temperature using adc and k type thermistor
+ * @param
+ * @return tmeprature in degre C
+ */
+static float tempRead(void)
+{
+    int voltage = adcConversionGet(ADC_CHANNEL_TS_EXT);
+    int oxco_vcc = adcConversionGet(ADC_CHANNEL_OXCO_VCC) * 2;
+
+    if (voltage == 0)
+        return -273.15f;
+
+    // Calculate thermistor resistance
+    float r_ntc = (THM_R_FIXED * voltage) / (oxco_vcc - voltage);
+
+    // Apply Beta formula to get temperature in Kelvin
+    float temp_k = 1.0f / ( (1.0f / THM_T0) + (1.0f / THM_BETA) * log(r_ntc / THM_R0) );
+
+    // Convert Kelvin to Celsius
+    return temp_k - 273.15f;
+}
+
+
 #ifdef ENABLE_I2C
 static int i2cCmd(int argc, char **argv)
 {
@@ -363,7 +387,7 @@ static int gpsCmd(int argc, char **argv)
     }
 
     if(CLI_IS_PARM_2("tunnel")){
-        sys.tunnel_gps = !!(argv[3][0] == '1');
+        sys.gps_tunnel = !!(argv[3][0] == '1');
         return CLI_OK;
     }
 
@@ -376,10 +400,10 @@ static int adcCmd(int argc, char **argv)
 {
     (void)argc;(void)argv;
     adcConversionStart(TRUE);
-    printf("TEMP EXT: %ldmV\n", adcVoltageGet(ADC_CHANNEL_TS_EXT));
-    printf("DAC FB  : %ldmV\n", adcVoltageGet(ADC_CHANNEL_DAC_FB));
-    printf("VREF    : %ldmV\n", adcVoltageGet(ADC_CHANNEL_INTRV));
-    printf("OXCO    : %ldmV\n", adcVoltageGet(ADC_CHANNEL_OXCO_VCC) * 2);
+    printf("VTHT  : %ldmV\n", adcVoltageGet(ADC_CHANNEL_TS_EXT));
+    printf("VDAC  : %ldmV\n", adcVoltageGet(ADC_CHANNEL_DAC_FB));
+    printf("VREF  : %ldmV\n", adcVoltageGet(ADC_CHANNEL_INTRV));
+    printf("VOXCO : %ldmV\n", adcVoltageGet(ADC_CHANNEL_OXCO_VCC) * 2);
     return CLI_OK;
 }
 #endif
@@ -604,29 +628,6 @@ cli_command_t cli_cmds [] = {
 #endif /* ENABLE_CLI */
 
 /**
- * @brief Obtain external temperature using adc and k type thermistor
- * @param
- * @return tmeprature in degre C
- */
-static float tempRead(void)
-{
-    int voltage = adcConversionGet(ADC_CHANNEL_TS_EXT);
-    int oxco_vcc = adcConversionGet(ADC_CHANNEL_OXCO_VCC) * 2;
-
-    if (voltage == 0)
-        return -273.15f;
-
-    // Calculate thermistor resistance
-    float r_ntc = (THM_R_FIXED * voltage) / (oxco_vcc - voltage);
-
-    // Apply Beta formula to get temperature in Kelvin
-    float temp_k = 1.0f / ( (1.0f / THM_T0) + (1.0f / THM_BETA) * log(r_ntc / THM_R0) );
-
-    // Convert Kelvin to Celsius
-    return temp_k - 273.15f;
-}
-
-/**
  * @brief
  * @param start
  * @param mid
@@ -662,10 +663,10 @@ void app(void)
     titleLine('\xc9', '\xcd', '\xbb', 40);
     putchar('\n');
     printf("\xba gpsdo %s                           \xba\n", VERSION);
-    printf("\xba core speed %dMHz                      \xba\n", (uint16_t)(clocks.cpu/1000000UL));
-    printf("\xba pclk1 %dMHz                            \xba\n", (uint16_t)(clocks.clk1/1000000UL));
-    printf("\xba pclk2 %dMHz                            \xba\n", (uint16_t)(clocks.clk2/1000000UL));
-    printf("\xba adcclk %dMHz                           \xba\n", (uint16_t)(clocks.clk3/1000000UL));
+    printf("\xba core speed\t%3dMHz                   \xba\n", (uint16_t)(clocks.cpu/1000000UL));
+    printf("\xba pclk1 \t%3dMHz                   \xba\n", (uint16_t)(clocks.clk1/1000000UL));
+    printf("\xba pclk2 \t%3dMHz                   \xba\n", (uint16_t)(clocks.clk2/1000000UL));
+    printf("\xba adcclk\t%3dMHz                   \xba\n", (uint16_t)(clocks.clk3/1000000UL));
     titleLine('\xc8', '\xcd', '\xbc', 40);
     putchar('\n');
     #endif
@@ -702,7 +703,7 @@ void app(void)
 #endif
 
 #ifdef ENABLE_GPS
-        if(sys.tunnel_gps){
+        if(sys.gps_tunnel){
             const char *sentence = nmeaSentenceGet();
             if(sentence){
                 printf("%s", sentence);
