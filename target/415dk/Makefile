@@ -99,7 +99,7 @@ APP_SOURCES +=$(APP_PATH)/gps.c
 endif
 
 ifneq ($(filter ENABLE_IOEXPANDER, $(FEATURE_ENABLE)),)
-DRV_SOURCES +=$(DRIVER_COMPONENT_PATH)/io_expander/pcf8574.c
+DRV_SOURCES +=$(DRIVER_COMPONENT_PATH)/io_expander/pca9538.c
 endif
 
 

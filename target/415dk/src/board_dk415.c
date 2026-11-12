@@ -10,7 +10,7 @@
 #include "pwm.h"
 #include "clock.h"
 #include "io_expander.h"
-#include "io_expander/pcf8574.h"
+#include "io_expander/pca9538.h"
 
 #ifdef ENABLE_DEBUG_BOARD
 #define DBG_TAG "BOARD : "
@@ -157,7 +157,7 @@ static adc_t hadc;
 #endif
 
 #ifdef ENABLE_IOEXPANDER
-static ioexp_t *ioexp = &pcf8574_ioexp;
+static ioexp_t *ioexp = &pca9538_ioexp;
 #endif
 
 #ifdef ENABLE_PPS
