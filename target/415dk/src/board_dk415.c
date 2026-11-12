@@ -199,28 +199,48 @@ void ledSet(enum led_tag tag, uint8_t state)
 #if defined(ENABLE_I2C) && defined(ENABLE_IOEXPANDER)
     switch (tag)
     {
-    case LED_PPS:
+    case LED_PPS_RGB:
+        ioexp->set(&i2cbus, LED_PPS_RGB_MASK);
+        ioexp->clr(&i2cbus, (state << LED_PPS_B_Pos) & LED_PPS_RGB_MASK);
+        break;
+    case LED_PPS_R:
         if (state)
-            ioexp->clr(&i2cbus, (state << LED_PPS_Pos) & LED_PPS_MASK);
+            ioexp->clr(&i2cbus, LED_PPS_R_MASK);
         else
-            ioexp->set(&i2cbus, LED_PPS_MASK);
+            ioexp->set(&i2cbus, LED_PPS_R_MASK);
+        break;
+    case LED_PPS_G:
+        if (state)
+            ioexp->clr(&i2cbus, LED_PPS_G_MASK);
+        else
+            ioexp->set(&i2cbus, LED_PPS_G_MASK);
+        break;
+    case LED_PPS_B:
+        if (state)
+            ioexp->clr(&i2cbus, LED_PPS_B_MASK);
+        else
+            ioexp->set(&i2cbus, LED_PPS_B_MASK);
         break;
 
     case LED_LOCK:
         if (state)
-            ioexp->clr(&i2cbus, (state << LED_LOCK_Pos) & LED_LOCK_MASK);
+            ioexp->clr(&i2cbus, LED_LOCK_MASK);
         else
             ioexp->set(&i2cbus, LED_LOCK_MASK);
         break;
     case LED_ALM:
         if (state)
-            ioexp->clr(&i2cbus, (state << LED_ALM_Pos) & LED_ALM_MASK);
+            ioexp->clr(&i2cbus, LED_ALM_MASK);
         else
             ioexp->set(&i2cbus, LED_ALM_MASK);
         break;
-    case LED_RGB:
-        ioexp->write(&i2cbus, state);
+    case LED_ALL:
+        if (state)
+            ioexp->clr(&i2cbus, LED_ALL_MASK);
+        else
+            ioexp->set(&i2cbus, LED_ALL_MASK);
         break;
+
     default:
         break;
     }
@@ -287,6 +307,22 @@ uint16_t i2cRead(uint8_t addr, uint8_t *data, uint16_t size)
     return I2C_Read(&i2cbus, addr, data, size);
 }
 #endif
+
+enum clk_sel clockSelectGet(void)
+{
+    return GPIO_Read(CLK_SEL_PIN);;
+}
+
+void clockSelect(enum clk_sel sel)
+{
+    GPIO_Write(CLK_SEL_PIN, (uint16_t)sel);
+}
+
+void clockFrequencySet(uint32_t freq)
+{
+    (void)freq;
+    mco(MCO_SCLK, MCO_DIV_16);
+}
 
 #ifdef ENABLE_SPI
 /**
@@ -513,7 +549,7 @@ void countGateTimeSet(uint32_t ms)
  *
  * @param sel
  */
-void countSelect(enum count_sel sel)
+void countGateSelect(enum gate_sel sel)
 {
     GPIO_Write(CNT_SEL_PIN, sel);
 }
@@ -659,11 +695,21 @@ void ppsInt(void (*cb)(void))
  */
 void ppsSelect(enum pps_sel sel)
 {
-    if(sel < PPS_SEL_TST_EN){
+    if(sel < PPS_GPS_OUT_EN){
         GPIO_Write(PPS_SEL_PIN, sel);
     }else{
-        GPIO_Write(TST_EN_PIN, sel - PPS_SEL_TST_EN);
+        GPIO_Write(GPS_OUT_EN_PIN, sel - PPS_GPS_OUT_EN);
     }
+}
+
+enum pps_sel ppsSelectGet(void)
+{
+    return GPIO_Read(PPS_SEL_PIN) ? PPS_SEL_GPS : PPS_SEL_SOC;
+}
+
+uint8_t ppsGpsOutEnGet(void)
+{
+    return !GPIO_Read(GPS_OUT_EN_PIN);
 }
 #endif /* ENABLE_PPS */
 
@@ -761,7 +807,7 @@ static uint32_t adcCalibrate(void)
     /**
      * Check if conversion is within range
      *
-     * VINTRV 1.17V  1.20V  1.23V
+     * VINTRV 1.17V  1.20V  1.23V +-2.5%
      *
      * with VCCA = 3.3V
      * 1450 < ADC < 1530
@@ -876,7 +922,6 @@ int32_t adcVoltageGet(uint8_t ch)
 #endif
 
 #ifdef ENABLE_GPS
-
 /**
  * @brief
  * @param en
@@ -885,7 +930,6 @@ void gpsEnableSet(uint8_t en)
 {
     GPIO_Write(GPS_EN_PIN, en);
 }
-
 #endif
 
 int main(void)
@@ -994,8 +1038,8 @@ int main(void)
         DBG_BOARD_ERR("Fail to start pps");
     }
     GPIO_Config(PPS_SEL_PIN, GPO_LS);
-    GPIO_Write(TST_EN_PIN, GPIO_PIN_HIGH);
-    GPIO_Config(TST_EN_PIN, GPO_LS);
+    GPIO_Write(GPS_OUT_EN_PIN, GPIO_PIN_HIGH);
+    GPIO_Config(GPS_OUT_EN_PIN, GPO_LS);
 #endif
 
 #ifdef ENABLE_COUNT
@@ -1028,6 +1072,9 @@ int main(void)
         RCC->CTRLSTS = RCC_CTRLSTS_RSTFC;
         DBG_BOARD_WRN("Reset reason: 0x%x ", reset);
     }
+
+    GPIO_Config(CLK_SEL_PIN, GPO_LS);
+    GPIO_Config(CNT_SEL_PIN, GPO_LS);
 
     extern void app(void);
 

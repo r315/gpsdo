@@ -72,7 +72,7 @@ static void ppsLedBlink(void)
     #ifdef ENABLE_I2C
     static uint8_t pps_led_color;
     pps_led_color = (pps_led_color < 6) ? pps_led_color + 1 : 1;
-    ledSet(LED_RGB, pps_led_color);
+    ledSet(LED_PPS_RGB, pps_led_color);
     #endif
 }
 #endif
@@ -515,7 +515,7 @@ static int countCmd(int argc, char **argv)
     }
 
     if(CLI_IS_PARM_1("src")){
-        countSelect(argv[2][0] == '1');
+        countGateSelect(argv[2][0] == '1');
         return CLI_OK;
     }
 

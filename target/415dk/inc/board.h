@@ -10,7 +10,7 @@ extern "C" {
 #include <stdint.h>
 #include "at32f4xx.h"
 #include "gpio_at32f4xx.h"
-#include "tone_at32f4xx.h"
+#include "tone.h"
 #include "dma_at32f4xx.h"
 #include "spi.h"
 #include "gpio.h"
@@ -45,12 +45,19 @@ extern "C" {
 #define DBG_PIN_LOW             GPIO_Write(DBG_PIN, GPIO_PIN_LOW)
 #define DBG_PIN_TOGGLE          GPIO_Toggle(DBG_PIN)
 
-#define LED_PPS_Pos             0
-#define LED_PPS_MASK            (7 << LED_PPS_Pos)
-#define LED_LOCK_Pos            3
+/* IO Expander */
+#define LED_PPS_B_Pos           2
+#define LED_PPS_B_MASK          (1 << LED_PPS_B_Pos)
+#define LED_PPS_G_Pos           3
+#define LED_PPS_G_MASK          (1 << LED_PPS_G_Pos)
+#define LED_PPS_R_Pos           4
+#define LED_PPS_R_MASK          (1 << LED_PPS_R_Pos)
+#define LED_LOCK_Pos            1
 #define LED_LOCK_MASK           (1 << LED_LOCK_Pos)
-#define LED_ALM_Pos             4
+#define LED_ALM_Pos             0
 #define LED_ALM_MASK            (1 << LED_ALM_Pos)
+#define LED_ALL_MASK            (0x1F)
+#define LED_PPS_RGB_MASK        (0x1C)
 
 /* This is not eeprom size, but it should be greater than requested eeprom size and be 4byte aligned */
 #define EEPROM_BUF_SIZE         128
@@ -85,17 +92,20 @@ extern "C" {
 #define ADC_SEQ_LEN             4
 
 /* IO Pins */
-#define CLK_SEL_PIN             PB_5
-#define CNT_SEL_PIN             PB_4
-#define PPS_SEL_PIN             PA_1
-#define GPS_EN_PIN              PB_9
-#define TST_EN_PIN              PC_13
+#define CLK_SEL_PIN             PB_5    // Route SOC CLK or LO ro CLK output
+#define CNT_SEL_PIN             PB_4    // Route CLK IN or CLKO to counter gate
+#define PPS_SEL_PIN             PA_1    // Route SOC PPS or GPS PPS ro PPS output
+#define GPS_EN_PIN              PB_9    // Enable GPS module
+#define GPS_OUT_EN_PIN          PC_13   // Enable GPS PPS output to Ext clock input
 
 enum led_tag{
-    LED_PPS = 0,
-    LED_LOCK,
+    LED_LOCK = 0,
     LED_ALM,
-    LED_RGB
+    LED_PPS_RGB,
+    LED_PPS_R,
+    LED_PPS_G,
+    LED_PPS_B,
+    LED_ALL
 };
 
 enum mco_src {
@@ -126,13 +136,18 @@ enum mco_div {
 enum pps_sel {
     PPS_SEL_SOC = 0,
     PPS_SEL_GPS,
-    PPS_SEL_TST_EN,
-    PPS_SEL_TST_DIS
+    PPS_GPS_OUT_EN,
+    PPS_CPS_OUT_DIS
 };
 
 enum clk_sel {
     CLK_SEL_SOC = 0,
     CLK_SEL_LO
+};
+
+enum gate_sel {
+    GATE_SEL_CLKO,
+    GATE_SEL_EXT
 };
 
 enum count_sel {
@@ -162,6 +177,7 @@ uint32_t eepromErase(void);
 
 void mco(enum mco_src src, enum mco_div div);
 void ledSet(enum led_tag tag, uint8_t state);
+enum clk_sel clockSelectGet(void);
 
 #ifdef ENABLE_COUNT
 void countEocSet(void(*cb)(countres_t));
@@ -169,7 +185,7 @@ void countGateTimeSet(uint32_t ms);
 void countStart(void);
 void countStop(void);
 uint32_t countConfig(enum count_cfg cfg);
-void countSelect(enum count_sel sel);
+void countGateSelect(enum gate_sel sel);
 #endif
 
 uint16_t i2cWrite(uint8_t dev_addr, const uint8_t *data, uint16_t size);
@@ -192,11 +208,16 @@ void ppsSelect(enum pps_sel sel);
 void ppsSync(void);
 void ppsPulseSet(uint16_t unit);
 void ppsInt(void (*cb)(void));
+enum pps_sel ppsSelectGet(void);
+uint8_t ppsGpsOutEnGet(void);
 #endif
 
 #ifdef ENABLE_GPS
 void gpsEnableSet(uint8_t en);
 #endif
+
+void clockSelect(enum clk_sel sel);
+void clockFrequencySet(uint32_t freq);
 
 #ifdef ENABLE_TERMISTOR
 #endif
