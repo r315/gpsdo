@@ -948,9 +948,9 @@ int main(void)
     // Configure cpu and bus clock's
     SystemConfigClockSrc(RCC_CFG_SYSCLKSEL_HSI);
     RCC->CTRL |= RCC_CTRL_HSEBYPS;  // Bypass oscillator
-    uint32_t sclk = SystemConfigPll(RCC_CFG_PLLRC_HSE, HSE_VALUE, 150000000);
+    int32_t sclk = SystemConfigPll(RCC_CFG_PLLRC_HSE, HSE_VALUE, 150000000);
 
-    if (sclk)
+    if (sclk > 0)
     {
         SystemConfigClockSrc(RCC_CFG_SYSCLKSEL_PLL);
         SystemCoreClockUpdate();
@@ -971,8 +971,17 @@ int main(void)
     DBG_BOARD_INF("Debug started");
 #endif
 
-    if(!sclk){
-        DBG_BOARD_ERR("PLL Config fail");
+    switch(sclk){
+        case -1:
+            DBG_BOARD_ERR("PLL is in use");
+            break;
+        case -2:
+            DBG_BOARD_ERR("HEXT fail to start");
+            break;
+        case -3:
+            DBG_BOARD_ERR("HSI Fail to start");
+            break;
+        default: break;
     }
 
     systicksInit();
