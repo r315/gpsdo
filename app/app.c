@@ -694,6 +694,11 @@ void app(void)
 
     WDT_Init(WDT_TIMEOUT);
 
+    clockFrequencySet(10000000);
+    clockSelect(CLK_SEL_SOC);
+    countGateSelect(GATE_SEL_CLKO);
+    ppsSelect(PPS_SEL_SOC);
+
     while(1) {
 #ifdef ENABLE_PPS
         if(sys.pps_ready){
