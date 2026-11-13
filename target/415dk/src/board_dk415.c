@@ -100,7 +100,7 @@
 
 typedef struct adc {
     uint32_t calibration_code;
-    float resolution;
+    uint32_t vref_raw;
 } adc_t;
 
 static uint32_t systicks;
@@ -758,6 +758,19 @@ void dacValueSet(uint16_t val)
 
 #ifdef ENABLE_ADC
 /**
+ * @brief Wait for a bit in a register until desired state or timeout
+ * @param reg   Addres of register
+ * @param flag  bitmask of flag
+ * @param mask  bitmask of state
+ * @return 0 on success, 1 on timeout
+ */
+static uint32_t adcWaitFlag(volatile uint32_t *reg, uint32_t flag, uint32_t mask)
+{
+    uint32_t t = 0xFFFF;
+    while (((*reg & flag) != mask) && --t) { __NOP(); }
+    return t == 0;
+}
+/**
  * @brief Configure sample time for one adc channel
  *
  * */
@@ -788,39 +801,32 @@ static void adcSampleTime(uint16_t ch, uint16_t time)
  * */
 uint32_t adcCalibrate(void)
 {
-    ADC1->CTRL2 |= ADC_CTRL2_CAL; // Perform ADC calibration
-
-    while (ADC1->CTRL2 & ADC_CTRL2_CAL)
-        asm volatile("nop");
+    // Reset adc calibration
+    ADC1->CTRL2 |= ADC_CTRL2_RSTCAL;
+    if(adcWaitFlag(&ADC1->CTRL2, ADC_CTRL2_RSTCAL, 0)) return 0;
+    // Start ADC calibration
+    ADC1->CTRL2 |= ADC_CTRL2_CAL;
+    if(adcWaitFlag(&ADC1->CTRL2, ADC_CTRL2_CAL, 0)) return 0;
     // Get calibration code
     hadc.calibration_code = ADC1->RDOR;
-
-    /**
-     * Measure resolution by performing conversion
-     * of internal reference using preemptive channels
-     * */
+    // Configure single preempt conversion of internal reference
     ADC1->JSQ = (ADC_CHANNEL_INTRV << 15);
-    // Start conversion
-    ADC1->CTRL2 |= ADC_CTRL2_JSWSTR;
-    while (!(ADC1->STS & ADC_STS_JEC))
-        asm volatile("nop");
-
-    /**
-     * Check if conversion is within range
-     *
-     * VINTRV 1.17V  1.20V  1.23V +-2.5%
-     *
-     * with VCCA = 3.3V
-     * 1450 < ADC < 1530
-     */
-    uint32_t vref_raw = ADC1->JDOR1;
-    if(1530 < vref_raw || 1450 > vref_raw){
-        return 0;
+    // averate 16 times
+    uint32_t sum = 0;
+    const uint32_t N = 16;
+    for (uint32_t i = 0; i < N; i++) {
+        ADC1->STS &= ~ADC_STS_JEC;          // clear stale flag
+        ADC1->CTRL2 |= ADC_CTRL2_JSWSTR;
+        if(adcWaitFlag(&ADC1->STS, ADC_STS_JEC, ADC_STS_JEC)) return 0;
+        sum += ADC1->JDOR1;
     }
-
-    // Compute resolution
-    hadc.resolution = ADC_INTRV_VALUE / vref_raw;
-    return 1;
+    uint32_t vref_raw = sum / N;
+    // Plausibility only: VDDA roughly 2.0 V .. 3.6 V
+    if (vref_raw < 1365 || vref_raw > 2457) return 0;
+    // VDDA in mV (full precision), then derive whatever you need
+    //hadc.vdda_mv = (1200UL * 4095UL + vref_raw / 2) / vref_raw;
+    hadc.vref_raw = vref_raw;
+    return vref_raw;
 }
 
 
@@ -875,16 +881,7 @@ uint8_t adcConversionStart(uint8_t wait)
     ADC1->STS = 0;
     ADC1->CTRL2 |= ADC_CTRL2_JSWSTR;
 
-    if(wait){
-        uint32_t timeout = 0xFFFF;
-        do{
-            if (--timeout == 0) {
-                return 0;
-            }
-        }while ((ADC1->STS & ADC_STS_JEC) == RESET && timeout);
-    }
-
-    return 1;
+    return wait ? !adcWaitFlag(&ADC1->STS, ADC_STS_JEC, ADC_STS_JEC) : 1;
 }
 
 /**
@@ -918,7 +915,9 @@ uint16_t adcConversionGet(uint8_t ch)
  */
 int32_t adcVoltageGet(uint8_t ch)
 {
-    return adcConversionGet(ch) * hadc.resolution;
+    uint32_t raw = adcConversionGet(ch);
+    // raw * 1200 / vref_raw, rounded. Max 4095*1200 ≈ 4.9M, no overflow
+    return (int32_t)((raw * ADC_INTRV_VALUE + hadc.vref_raw / 2) / hadc.vref_raw);
 }
 #endif
 
