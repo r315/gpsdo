@@ -559,6 +559,46 @@ static int sysCmd(int argc, char **argv)
         }
     }
 
+    if(CLI_IS_PARM_1("status")){
+        float temp = tempRead();
+        printf(" OCXO Temp  : %d.%d\n", (int)temp, (int)(temp*10)%10);
+        printf(" VOXCO      : %ldmV\n", adcVoltageGet(ADC_CHANNEL_OXCO_VCC) * 2);
+        printf(" VDAC OUT   : %ldmV\n", adcVoltageGet(ADC_CHANNEL_DAC_FB));
+        printf(" ADC VREF   : %ldmV\n", adcVoltageGet(ADC_CHANNEL_INTRV));
+        //printf(" VDD        : %ldmV\n", adcVoltageGet(ADC_CHANNEL_INTRV)); // Assemble voltage divider
+        printf(" Last count : %lu\n", (uint32_t)count);
+        printf(" PPS Out    : %s\n", ppsSelectGet() == PPS_SEL_GPS ? "GPS" : "SOC");
+        printf(" CLK Out    : %s\n", clockSelectGet() == CLK_SEL_SOC ? "SOC" : "LO");
+        printf(" GPS -> EXT : %d\n", ppsGpsOutEnGet());
+        // DAC output % ?
+        // GPS Locked / PPS available
+        // PLL status
+        // ADC status
+        return CLI_OK;
+    }
+
+    return CLI_BAD_PARAM;
+}
+
+static int testCmd(int argc, char **argv)
+{
+    if(CLI_IS_PARM_1("help") || argc == 1){
+        printf("Usage: test [args]\n");
+        printf("  leds,     Cycle all leds\n");
+        return CLI_OK;
+    }
+
+    if(CLI_IS_PARM_1("leds")){
+        ledSet(LED_ALL, 0);
+        for(enum led_tag i = LED_LOCK; i < LED_ALL; i++){
+            ledSet(i, 1);
+            delayMs(500);
+            ledSet(i, 0);
+        }
+        return CLI_OK;
+    }
+    // ADC
+    // DAC
     return CLI_BAD_PARAM;
 }
 
@@ -569,6 +609,7 @@ static int helpCmd(int argc, char **argv)
     printf("  reset   system reset\n");
     printf("  clear   clear window\n");
     printf("  sys     system control\n");
+    printf("  test    system blocks\n");
 
     printf("\nFeature commands:\n");
 #ifdef ENABLE_I2C
@@ -603,6 +644,7 @@ cli_command_t cli_cmds [] = {
     {"reset", resetCmd},
     {"clear", clearCmd},
     {"sys", sysCmd},
+    {"test", testCmd},
 #ifdef ENABLE_I2C
     {"i2c", i2cCmd},
 #endif
