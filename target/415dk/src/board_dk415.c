@@ -782,10 +782,11 @@ static void adcSampleTime(uint16_t ch, uint16_t time)
 }
 
 /**
- * @brief calibrate ADC and get resolution based
- * on 1.20V internal reference
+ * @brief calibrate ADC based
+ * on the 1.20V internal reference
+ * @return adc value for 1.2V internal reference, 0 on failure
  * */
-static uint32_t adcCalibrate(void)
+uint32_t adcCalibrate(void)
 {
     ADC1->CTRL2 |= ADC_CTRL2_CAL; // Perform ADC calibration
 

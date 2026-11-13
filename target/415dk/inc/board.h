@@ -201,6 +201,7 @@ void dacEnable(uint8_t en);
 uint8_t adcConversionStart(uint8_t wait);
 uint16_t adcConversionGet(uint8_t ch);
 int32_t adcVoltageGet(uint8_t ch);
+uint32_t adcCalibrate(void);
 #endif
 
 #ifdef ENABLE_PPS

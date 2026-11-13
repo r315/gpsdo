@@ -14,12 +14,6 @@
 #define VERSION "vx.x.x"
 #endif
 
-#define SYS_FLAG_LOG_TEMP     (1 << 0)
-#define SYS_FLAG_LOG_VREFINT  (1 << 1)
-#define SYS_FLAG_LOG_COUNT    (1 << 2)
-#define SYS_FLAG_LOG_GPS      (1 << 3)
-#define SYS_FLAG_PPS          (1 << 4)
-
 #define SYS_LOG_TICK          500   /* ms */
 #define WDT_TIMEOUT           3000  /* ms */
 
@@ -398,13 +392,30 @@ static int gpsCmd(int argc, char **argv)
 #ifdef ENABLE_ADC
 static int adcCmd(int argc, char **argv)
 {
-    (void)argc;(void)argv;
-    adcConversionStart(TRUE);
-    printf("VTHT  : %ldmV\n", adcVoltageGet(ADC_CHANNEL_TS_EXT));
-    printf("VDAC  : %ldmV\n", adcVoltageGet(ADC_CHANNEL_DAC_FB));
-    printf("VREF  : %ldmV\n", adcVoltageGet(ADC_CHANNEL_INTRV));
-    printf("VOXCO : %ldmV\n", adcVoltageGet(ADC_CHANNEL_OXCO_VCC) * 2);
-    return CLI_OK;
+
+    if(CLI_IS_PARM_1("help") || argc == 1){
+        printf("Usage: adc [args]\n");
+        printf("  voltages,   print all measuring voltages\n");
+        printf("  calibrate,  recalibrate adc\n");
+        return CLI_OK;
+    }
+
+
+    if(CLI_IS_PARM_1("voltages")){
+        adcConversionStart(TRUE);
+        printf(" VTHT  : %ldmV\n", adcVoltageGet(ADC_CHANNEL_TS_EXT));
+        printf(" VDAC  : %ldmV\n", adcVoltageGet(ADC_CHANNEL_DAC_FB));
+        printf(" VREF  : %ldmV\n", adcVoltageGet(ADC_CHANNEL_INTRV));
+        printf(" VOXCO : %ldmV\n", adcVoltageGet(ADC_CHANNEL_OXCO_VCC) * 2);
+        return CLI_OK;
+    }
+
+    if(CLI_IS_PARM_1("calibrate")){
+        printf(" vref_raw  : %ld\n", adcCalibrate());
+        return CLI_OK;
+    }
+
+    return CLI_BAD_PARAM;
 }
 #endif
 
